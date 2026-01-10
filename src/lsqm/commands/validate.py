@@ -8,10 +8,15 @@ from lsqm.cli import pass_context
 @click.command()
 @click.option("--arch", type=str, default=None, help="Validate specific architecture")
 @click.option("--timeout", type=int, default=300, help="Timeout per validation (seconds)")
+@click.option("--parallel", type=int, default=None, help="Number of parallel validations")
 @click.option("--keep-containers", is_flag=True, default=False, help="Don't cleanup containers")
 @pass_context
-def validate(ctx, arch, timeout, keep_containers):
+def validate(ctx, arch, timeout, parallel, keep_containers):
     """Run validations against LocalStack."""
+    # Use CLI option if provided, otherwise use config
+    if parallel is not None:
+        ctx.config.parallel = parallel
+
     if ctx.dry_run:
         click.echo("DRY RUN: Would validate architectures")
         click.echo(f"  Architecture: {arch or 'all with apps'}")

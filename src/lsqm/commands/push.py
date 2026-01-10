@@ -47,6 +47,16 @@ def _push_impl(
 
     artifacts_dir = get_artifacts_dir()
 
+    # Check if artifacts directory is a valid git repo
+    if not artifacts_dir.exists() or not (artifacts_dir / ".git").exists():
+        click.echo("No artifacts repository found. Run 'lsqm sync' first.")
+        return {
+            "commit_sha": "",
+            "commit_message": "",
+            "new_architectures": 0,
+            "issues_created": 0,
+        }
+
     # Update architecture index
     new_archs = update_architecture_index(artifacts_dir, logger=logger)
     click.echo(f"  New architectures: {new_archs}")
