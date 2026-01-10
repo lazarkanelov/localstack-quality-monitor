@@ -36,23 +36,48 @@ def clone_or_pull_artifacts(
         # Pull latest
         if logger:
             logger.info(f"Pulling latest from {repo}")
-        subprocess.run(
-            ["git", "pull", "--ff-only"],
-            cwd=artifacts_dir,
-            capture_output=True,
-            check=True,
-        )
+        try:
+            result = subprocess.run(
+                ["git", "pull", "--ff-only"],
+                cwd=artifacts_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                if logger:
+                    logger.warning(f"Git pull failed: {result.stderr}")
+                # Try to continue anyway - might be up to date or have local changes
+        except Exception as e:
+            if logger:
+                logger.warning(f"Git pull error: {e}")
     else:
-        # Clone
+        # Clone - remove existing directory first if it exists but isn't a git repo
+        if artifacts_dir.exists():
+            shutil.rmtree(artifacts_dir)
+
+        # Ensure parent directory exists
+        artifacts_dir.parent.mkdir(parents=True, exist_ok=True)
+
         if logger:
             logger.info(f"Cloning {repo}")
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
+
         clone_url = f"https://x-access-token:{token}@github.com/{repo}.git"
-        subprocess.run(
-            ["git", "clone", clone_url, str(artifacts_dir)],
-            capture_output=True,
-            check=True,
-        )
+        try:
+            result = subprocess.run(
+                ["git", "clone", clone_url, str(artifacts_dir)],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                error_msg = result.stderr or result.stdout or "Unknown error"
+                raise RuntimeError(f"Git clone failed: {error_msg}")
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Git clone failed: {e.stderr or e.stdout or str(e)}")
+
+    # Ensure basic directory structure exists
+    (artifacts_dir / "architectures").mkdir(exist_ok=True)
+    (artifacts_dir / "apps").mkdir(exist_ok=True)
+    (artifacts_dir / "runs").mkdir(exist_ok=True)
 
     return artifacts_dir
 
