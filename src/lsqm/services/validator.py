@@ -162,12 +162,23 @@ async def _validate_async(
                 counts[status_key] += 1
 
     # Save results
-    results_dir = artifacts_dir / "runs" / run_id / "results"
+    run_dir = artifacts_dir / "runs" / run_id
+    results_dir = run_dir / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
 
     for vr in validation_results:
         with open(results_dir / f"{vr.arch_hash}.json", "w") as f:
             json.dump(vr.to_dict(), f, indent=2)
+
+    # Save summary.json for the report command
+    summary = {
+        "run_id": run_id,
+        "started_at": datetime.utcnow().isoformat(),
+        "localstack_version": localstack_version,
+        "summary": counts,
+    }
+    with open(run_dir / "summary.json", "w") as f:
+        json.dump(summary, f, indent=2)
 
     return {
         **counts,
