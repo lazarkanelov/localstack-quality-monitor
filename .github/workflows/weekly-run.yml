@@ -43,8 +43,8 @@ jobs:
 
       - name: Sync Artifacts from Repository
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+          GITHUB_TOKEN: ${{ secrets.ARTIFACT_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
         run: lsqm sync
 
       - name: Cache artifacts
@@ -81,7 +81,7 @@ jobs:
       - name: Discover New Architectures
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
         run: |
           lsqm mine --limit ${{ github.event.inputs.discovery_limit || '100' }}
 
@@ -120,7 +120,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
           ANTHROPIC_TOKEN_BUDGET: ${{ github.event.inputs.token_budget || '500000' }}
         run: lsqm generate --budget $ANTHROPIC_TOKEN_BUDGET
 
@@ -132,25 +132,10 @@ jobs:
 
   # Step 4: Run validation against LocalStack
   validate:
-    name: Validate (${{ matrix.localstack_version }})
+    name: Validate Against LocalStack
     runs-on: ubuntu-latest
     needs: generate
     timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        localstack_version: ['latest']
-
-    services:
-      localstack:
-        image: localstack/localstack:${{ matrix.localstack_version }}
-        ports:
-          - 4566:4566
-        options: >-
-          --health-cmd="curl -f http://localhost:4566/_localstack/health"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
 
     steps:
       - uses: actions/checkout@v4
@@ -178,16 +163,11 @@ jobs:
           path: ~/.lsqm/cache/artifacts
           key: lsqm-artifacts-generated-${{ github.run_id }}
 
-      - name: Wait for LocalStack
-        run: |
-          timeout 60 bash -c 'until curl -f http://localhost:4566/_localstack/health; do sleep 2; done'
-
       - name: Run Validation
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
-          LOCALSTACK_ENDPOINT: http://localhost:4566
-          LOCALSTACK_VERSION: ${{ matrix.localstack_version }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
+          LOCALSTACK_VERSION: ${{ github.event.inputs.localstack_version || 'latest' }}
         run: |
           lsqm validate --parallel 2 --timeout 300
 
@@ -197,16 +177,22 @@ jobs:
           path: ~/.lsqm/cache/artifacts
           key: lsqm-artifacts-validated-${{ github.run_id }}
 
-  # Step 5: Generate HTML report
+  # Step 5: Generate HTML report and deploy to GitHub Pages
   report:
-    name: Generate Report
+    name: Generate & Deploy Report
     runs-on: ubuntu-latest
     needs: validate
     if: always() && needs.validate.result != 'cancelled'
     timeout-minutes: 15
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -226,8 +212,154 @@ jobs:
       - name: Generate Report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
-        run: lsqm report
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
+        run: |
+          # Get the latest run ID
+          RUN_ID=$(ls -t ~/.lsqm/cache/artifacts/runs/ 2>/dev/null | head -1)
+          if [ -n "$RUN_ID" ]; then
+            lsqm report --run "$RUN_ID" --output ./report-output
+          else
+            echo "No runs found, generating empty report"
+            mkdir -p ./report-output
+            echo "<html><body><h1>No validation runs found</h1></body></html>" > ./report-output/index.html
+          fi
+
+      - name: Prepare GitHub Pages
+        run: |
+          # Create pages directory structure
+          mkdir -p ./gh-pages
+
+          # Get current date for this week's report
+          WEEK_DATE=$(date +%Y-%m-%d)
+
+          # Copy current report to dated folder
+          mkdir -p "./gh-pages/reports/$WEEK_DATE"
+          cp -r ./report-output/* "./gh-pages/reports/$WEEK_DATE/" 2>/dev/null || true
+
+          # Also copy as latest
+          mkdir -p ./gh-pages/latest
+          cp -r ./report-output/* ./gh-pages/latest/ 2>/dev/null || true
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-existing
+        continue-on-error: true
+
+      - name: Merge with existing reports
+        run: |
+          # If gh-pages branch exists, merge the reports
+          if [ -d "gh-pages-existing/reports" ]; then
+            cp -rn gh-pages-existing/reports/* ./gh-pages/reports/ 2>/dev/null || true
+          fi
+
+          # Generate index page with all reports
+          cat > ./gh-pages/index.html << 'INDEXEOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>LocalStack Quality Monitor - Reports</title>
+              <script src="https://cdn.tailwindcss.com"></script>
+              <script>
+                  tailwind.config = { darkMode: 'class' }
+              </script>
+          </head>
+          <body class="bg-slate-950 text-gray-100 min-h-screen">
+              <div class="container mx-auto px-4 py-12 max-w-4xl">
+                  <header class="text-center mb-12">
+                      <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                          LocalStack Quality Monitor
+                      </h1>
+                      <p class="text-slate-400 mt-2">Weekly AWS Architecture Compatibility Reports</p>
+                  </header>
+
+                  <div class="bg-slate-900 rounded-xl border border-slate-800 p-6 mb-8">
+                      <h2 class="text-xl font-semibold mb-4 flex items-center">
+                          <svg class="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                          </svg>
+                          Latest Report
+                      </h2>
+                      <a href="./latest/" class="block p-4 bg-slate-800 hover:bg-slate-700 rounded-lg transition">
+                          <div class="flex items-center justify-between">
+                              <span class="text-lg font-medium">View Current Report</span>
+                              <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                              </svg>
+                          </div>
+                      </a>
+                  </div>
+
+                  <div class="bg-slate-900 rounded-xl border border-slate-800 p-6">
+                      <h2 class="text-xl font-semibold mb-4 flex items-center">
+                          <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          Report History
+                      </h2>
+                      <div id="report-list" class="space-y-2">
+                          <!-- Populated by JavaScript -->
+                      </div>
+                  </div>
+
+                  <footer class="text-center mt-12 text-slate-500 text-sm">
+                      <p>Powered by <a href="https://localstack.cloud" class="text-blue-400 hover:underline">LocalStack</a></p>
+                  </footer>
+              </div>
+
+              <script>
+                  // This will be populated during build
+                  const reports = REPORT_LIST_PLACEHOLDER;
+
+                  const listEl = document.getElementById('report-list');
+                  if (reports.length === 0) {
+                      listEl.innerHTML = '<p class="text-slate-500">No historical reports available yet.</p>';
+                  } else {
+                      reports.forEach(report => {
+                          const div = document.createElement('a');
+                          div.href = './reports/' + report + '/';
+                          div.className = 'block p-3 bg-slate-800 hover:bg-slate-700 rounded-lg transition';
+                          div.innerHTML = `
+                              <div class="flex items-center justify-between">
+                                  <span class="font-mono text-sm">${report}</span>
+                                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                  </svg>
+                              </div>
+                          `;
+                          listEl.appendChild(div);
+                      });
+                  }
+              </script>
+          </body>
+          </html>
+          INDEXEOF
+
+          # Generate the report list and inject it
+          REPORT_DIRS=$(ls -r ./gh-pages/reports/ 2>/dev/null | head -52 || echo "")
+          REPORT_JSON="["
+          FIRST=true
+          for dir in $REPORT_DIRS; do
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              REPORT_JSON="$REPORT_JSON,"
+            fi
+            REPORT_JSON="$REPORT_JSON\"$dir\""
+          done
+          REPORT_JSON="$REPORT_JSON]"
+
+          sed -i "s|REPORT_LIST_PLACEHOLDER|$REPORT_JSON|g" ./gh-pages/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./gh-pages
+          keep_files: true
 
       - name: Save final artifacts cache
         uses: actions/cache/save@v4
@@ -235,11 +367,11 @@ jobs:
           path: ~/.lsqm/cache/artifacts
           key: lsqm-artifacts-final-${{ github.run_id }}
 
-      - name: Upload HTML report
+      - name: Upload HTML report artifact
         uses: actions/upload-artifact@v4
         with:
-          name: quality-report
-          path: ~/.lsqm/cache/reports/
+          name: quality-report-${{ github.run_id }}
+          path: ./report-output/
           retention-days: 90
 
   # Step 6: Compare with previous run
@@ -274,7 +406,7 @@ jobs:
         id: compare
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
         run: |
           if lsqm compare --output json > comparison.json 2>&1; then
             echo "has_regressions=false" >> $GITHUB_OUTPUT
@@ -325,22 +457,10 @@ jobs:
 
       - name: Push All Artifacts
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+          GITHUB_TOKEN: ${{ secrets.ARTIFACT_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
         run: |
-          # Show what will be pushed
-          echo "=== Artifact Repository Contents ==="
-          ls -la ~/.lsqm/cache/artifacts/ || true
-          echo ""
-          echo "=== Architectures (Terraform files) ==="
-          ls -la ~/.lsqm/cache/artifacts/architectures/ 2>/dev/null | head -20 || echo "No architectures"
-          echo ""
-          echo "=== Generated Apps (Python source) ==="
-          ls -la ~/.lsqm/cache/artifacts/apps/ 2>/dev/null | head -20 || echo "No apps"
-          echo ""
-
-          # Push to artifact repo
-          lsqm push --message "Weekly run $(date +%Y-%m-%d): architectures and apps updated"
+          lsqm push --message "Weekly run $(date +%Y-%m-%d)"
 
   # Step 8: Send notifications
   notify:
@@ -367,10 +487,12 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
         run: lsqm notify
 
       - name: Create Summary
+        env:
+          PAGES_URL: ${{ github.event.repository.homepage || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
         run: |
           echo "## LocalStack Quality Monitor - Weekly Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -382,9 +504,11 @@ jobs:
             echo ":white_check_mark: **No regressions detected**" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Artifacts Pushed" >> $GITHUB_STEP_SUMMARY
-          echo "- Terraform files for each architecture" >> $GITHUB_STEP_SUMMARY
-          echo "- Generated Python test applications" >> $GITHUB_STEP_SUMMARY
-          echo "- Validation results and reports" >> $GITHUB_STEP_SUMMARY
+          echo "### View Reports" >> $GITHUB_STEP_SUMMARY
+          echo "- [Latest Report](${PAGES_URL}/latest/)" >> $GITHUB_STEP_SUMMARY
+          echo "- [All Reports](${PAGES_URL}/)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[View full report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Terraform architectures discovered and validated" >> $GITHUB_STEP_SUMMARY
+          echo "- Python test applications generated" >> $GITHUB_STEP_SUMMARY
+          echo "- Validation results stored" >> $GITHUB_STEP_SUMMARY
