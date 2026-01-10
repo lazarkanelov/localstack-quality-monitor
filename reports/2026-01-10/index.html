@@ -85,7 +85,7 @@
                 <div>
                     <h1 class="text-2xl font-bold gradient-text">LocalStack Quality Monitor</h1>
                     <p class="text-sm text-slate-400 mt-1">
-                        Run <code class="bg-slate-800 px-2 py-0.5 rounded text-xs">30382831-9dc</code>
+                        Run <code class="bg-slate-800 px-2 py-0.5 rounded text-xs">446c711b-18f</code>
                         &bull; 2026-01-10
                         &bull; LocalStack <span class="text-blue-400">latest</span>
                         &bull; Duration <span class="text-green-400">0s</span>
@@ -275,7 +275,7 @@
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        310.4s
+                                        12.1s
                                     </span>
                                     
                                     <a href="https://registry.terraform.io/modules/ViktorUJ/vpc/aws/1.1.0" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -2593,7 +2593,20 @@ botocore>=1.34.0</code></pre>
                                     <summary class="px-3 py-2 text-sm text-slate-400 cursor-pointer hover:bg-slate-700 transition">
                                         Show terraform apply logs
                                     </summary>
-                                    <pre class="!bg-slate-900 text-xs overflow-auto max-h-64"><code class="language-bash">Terraform timed out</code></pre>
+                                    <pre class="!bg-slate-900 text-xs overflow-auto max-h-64"><code class="language-bash">Apply failed:
+STDOUT: ╷
+│ Error: No value for required variable
+│ 
+│   on variables.tf line 1:
+│    1: variable "vpc" {
+│ 
+│ The root module input variable "vpc" is not set, and has no default value.
+│ Use a -var or -var-file command line argument to provide a value for this
+│ variable.
+╵
+::error::Terraform exited with code 1.
+
+STDERR: </code></pre>
                                 </details>
                             </div>
                             
@@ -2642,7 +2655,7 @@ Ready.
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        55.2s
+                                        54.1s
                                     </span>
                                     
                                     <a href="local://simple_s3_test" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -3129,7 +3142,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 Changes to Outputs:
   + bucket_name = (known after apply)
 aws_s3_bucket.test_bucket: Creating...
-aws_s3_bucket.test_bucket: Creation complete after 0s [id=lsqm-test-bucket-simple]
+aws_s3_bucket.test_bucket: Creation complete after 1s [id=lsqm-test-bucket-simple]
 
 Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
@@ -3238,8 +3251,23 @@ bucket_name = "lsqm-test-bucket-simple"
                             
                             <tr class="hover:bg-slate-800/50 transition bg-blue-900/20">
                                 <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">cdcdbff8</code>
+                                    <code class="text-sm text-slate-300">30382831</code>
                                     <span class="ml-2 text-xs text-blue-400">(current)</span>
+                                </td>
+                                <td class="px-4 py-3 text-slate-300">2026-01-10</td>
+                                <td class="px-4 py-3 text-center text-white">2</td>
+                                <td class="px-4 py-3 text-center text-green-400">-</td>
+                                <td class="px-4 py-3 text-right">
+                                    <span class="font-semibold text-yellow-400">
+                                        50%
+                                    </span>
+                                </td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50 transition ">
+                                <td class="px-4 py-3">
+                                    <code class="text-sm text-slate-300">cdcdbff8</code>
+                                    
                                 </td>
                                 <td class="px-4 py-3 text-slate-300">2026-01-10</td>
                                 <td class="px-4 py-3 text-center text-white">1</td>
@@ -3268,7 +3296,7 @@ bucket_name = "lsqm-test-bucket-simple"
                             
                             <tr class="hover:bg-slate-800/50 transition ">
                                 <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">30382831</code>
+                                    <code class="text-sm text-slate-300">446c711b</code>
                                     
                                 </td>
                                 <td class="px-4 py-3 text-slate-300">2026-01-10</td>
@@ -3336,10 +3364,10 @@ bucket_name = "lsqm-test-bucket-simple"
             new Chart(ctx.getContext('2d'), {
                 type: 'line',
                 data: {
-                    labels: ["2026-01-10", "2026-01-10", "2026-01-10"],
+                    labels: ["2026-01-10", "2026-01-10", "2026-01-10", "2026-01-10"],
                     datasets: [{
                         label: 'Pass Rate %',
-                        data: [100.0, 100.0, 50.0],
+                        data: [50.0, 100.0, 100.0, 50.0],
                         borderColor: 'rgb(34, 197, 94)',
                         backgroundColor: 'rgba(34, 197, 94, 0.1)',
                         tension: 0.3,
