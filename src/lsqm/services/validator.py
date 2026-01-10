@@ -387,7 +387,7 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
 
         # tflocal apply
         proc = await asyncio.create_subprocess_exec(
-            "tflocal", "apply", "-auto-approve",
+            "tflocal", "apply", "-auto-approve", "-input=false",
             cwd=work_dir,
             env=env,
             stdout=asyncio.subprocess.PIPE,
@@ -441,7 +441,7 @@ async def _run_terraform_destroy(work_dir: Path, endpoint: str) -> None:
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            "tflocal", "destroy", "-auto-approve",
+            "tflocal", "destroy", "-auto-approve", "-input=false",
             cwd=work_dir,
             env=env,
             stdout=asyncio.subprocess.PIPE,
