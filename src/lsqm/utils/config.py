@@ -283,13 +283,13 @@ def load_config(config_path: Path | None = None) -> LSQMConfig:
         if "sources" in yaml_config:
             config.sources = SourcesConfig.from_dict(yaml_config["sources"])
 
-    # Override with environment variables
+    # Override with environment variables (strip whitespace to handle common input errors)
     if env_key := os.getenv("ANTHROPIC_API_KEY"):
-        config.anthropic_api_key = env_key
+        config.anthropic_api_key = env_key.strip()
     if env_token := os.getenv("GITHUB_TOKEN"):
-        config.github_token = env_token
+        config.github_token = env_token.strip()
     if env_repo := os.getenv("ARTIFACT_REPO"):
-        config.artifact_repo = env_repo
+        config.artifact_repo = env_repo.strip()
     if env_budget := os.getenv("ANTHROPIC_TOKEN_BUDGET"):
         config.token_budget = int(env_budget)
     if env_version := os.getenv("LOCALSTACK_VERSION"):
