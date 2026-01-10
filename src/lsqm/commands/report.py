@@ -40,19 +40,27 @@ def _report_impl(
 
     artifacts_dir = get_artifacts_dir()
 
+    # Ensure output directory exists
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
     # Load run results
     run_data = load_run_results(artifacts_dir, run_id)
     if not run_data:
         click.echo(f"No data available for run: {run_id}")
-        return {"path": "", "total": 0, "pass_rate": 0, "regressions": 0}
+        # Generate empty report placeholder
+        empty_report = output_path / "index.html"
+        empty_report.write_text(
+            "<!DOCTYPE html><html><head><title>No Data</title></head>"
+            "<body><h1>No validation data available</h1>"
+            f"<p>Run ID: {run_id}</p></body></html>"
+        )
+        return {"path": str(empty_report), "total": 0, "pass_rate": 0, "regressions": 0}
 
     click.echo(f"Run: {run_data.get('run_id', run_id)}")
     click.echo(f"Date: {run_data.get('started_at', 'unknown')}")
 
     # Generate HTML report
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
     report_path = generate_html_report(
         run_data=run_data,
         artifacts_dir=artifacts_dir,
