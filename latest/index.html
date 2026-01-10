@@ -85,7 +85,7 @@
                 <div>
                     <h1 class="text-2xl font-bold gradient-text">LocalStack Quality Monitor</h1>
                     <p class="text-sm text-slate-400 mt-1">
-                        Run <code class="bg-slate-800 px-2 py-0.5 rounded text-xs">446c711b-18f</code>
+                        Run <code class="bg-slate-800 px-2 py-0.5 rounded text-xs">ed725da5-327</code>
                         &bull; 2026-01-10
                         &bull; LocalStack <span class="text-blue-400">latest</span>
                         &bull; Duration <span class="text-green-400">0s</span>
@@ -275,7 +275,7 @@
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        12.1s
+                                        310.5s
                                     </span>
                                     
                                     <a href="https://registry.terraform.io/modules/ViktorUJ/vpc/aws/1.1.0" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -2593,20 +2593,7 @@ botocore>=1.34.0</code></pre>
                                     <summary class="px-3 py-2 text-sm text-slate-400 cursor-pointer hover:bg-slate-700 transition">
                                         Show terraform apply logs
                                     </summary>
-                                    <pre class="!bg-slate-900 text-xs overflow-auto max-h-64"><code class="language-bash">Apply failed:
-STDOUT: ╷
-│ Error: No value for required variable
-│ 
-│   on variables.tf line 1:
-│    1: variable "vpc" {
-│ 
-│ The root module input variable "vpc" is not set, and has no default value.
-│ Use a -var or -var-file command line argument to provide a value for this
-│ variable.
-╵
-::error::Terraform exited with code 1.
-
-STDERR: </code></pre>
+                                    <pre class="!bg-slate-900 text-xs overflow-auto max-h-64"><code class="language-bash">Terraform timed out</code></pre>
                                 </details>
                             </div>
                             
@@ -2619,12 +2606,52 @@ STDERR: </code></pre>
                                     <summary class="px-3 py-2 text-sm text-slate-400 cursor-pointer hover:bg-slate-700 transition">
                                         Show container logs
                                     </summary>
-                                    <pre class="!bg-slate-900 text-xs overflow-auto max-h-64"><code class="language-bash">
-LocalStack version: 4.12.1.dev56
-LocalStack build date: 2026-01-09
-LocalStack build git hash: 0b2a5d188
-
-Ready.
+                                    <pre class="!bg-slate-900 text-xs overflow-auto max-h-64"><code class="language-bash">10:46.956  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:10:46.958  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:10:56.973  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:10:56.976  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:06.988  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:06.991  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:17.002  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:17.006  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:27.008  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:27.011  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:37.023  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:37.026  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:47.038  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:47.041  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:57.054  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:11:57.057  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:07.064  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:07.068  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:17.074  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:17.085  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:27.088  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:27.091  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:37.094  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:37.097  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:47.112  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:47.115  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:57.127  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:12:57.130  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:07.133  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:07.136  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:17.142  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:17.145  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:27.147  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:27.150  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:37.162  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:37.165  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:47.178  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:47.181  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:57.195  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:13:57.198  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:14:07.206  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:14:07.210  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:14:17.217  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:14:17.219  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:14:27.234  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-10T22:14:27.237  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
 </code></pre>
                                 </details>
                             </div>
@@ -2655,7 +2682,7 @@ Ready.
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        54.1s
+                                        59.3s
                                     </span>
                                     
                                     <a href="local://simple_s3_test" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -3142,7 +3169,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 Changes to Outputs:
   + bucket_name = (known after apply)
 aws_s3_bucket.test_bucket: Creating...
-aws_s3_bucket.test_bucket: Creation complete after 1s [id=lsqm-test-bucket-simple]
+aws_s3_bucket.test_bucket: Creation complete after 0s [id=lsqm-test-bucket-simple]
 
 Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
@@ -3281,6 +3308,21 @@ bucket_name = "lsqm-test-bucket-simple"
                             
                             <tr class="hover:bg-slate-800/50 transition ">
                                 <td class="px-4 py-3">
+                                    <code class="text-sm text-slate-300">446c711b</code>
+                                    
+                                </td>
+                                <td class="px-4 py-3 text-slate-300">2026-01-10</td>
+                                <td class="px-4 py-3 text-center text-white">2</td>
+                                <td class="px-4 py-3 text-center text-green-400">-</td>
+                                <td class="px-4 py-3 text-right">
+                                    <span class="font-semibold text-yellow-400">
+                                        50%
+                                    </span>
+                                </td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50 transition ">
+                                <td class="px-4 py-3">
                                     <code class="text-sm text-slate-300">b5aa050f</code>
                                     
                                 </td>
@@ -3296,7 +3338,7 @@ bucket_name = "lsqm-test-bucket-simple"
                             
                             <tr class="hover:bg-slate-800/50 transition ">
                                 <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">446c711b</code>
+                                    <code class="text-sm text-slate-300">ed725da5</code>
                                     
                                 </td>
                                 <td class="px-4 py-3 text-slate-300">2026-01-10</td>
@@ -3364,10 +3406,10 @@ bucket_name = "lsqm-test-bucket-simple"
             new Chart(ctx.getContext('2d'), {
                 type: 'line',
                 data: {
-                    labels: ["2026-01-10", "2026-01-10", "2026-01-10", "2026-01-10"],
+                    labels: ["2026-01-10", "2026-01-10", "2026-01-10", "2026-01-10", "2026-01-10"],
                     datasets: [{
                         label: 'Pass Rate %',
-                        data: [50.0, 100.0, 100.0, 50.0],
+                        data: [50.0, 100.0, 50.0, 100.0, 50.0],
                         borderColor: 'rgb(34, 197, 94)',
                         backgroundColor: 'rgba(34, 197, 94, 0.1)',
                         tension: 0.3,
