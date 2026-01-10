@@ -529,7 +529,21 @@ def push_artifacts(
     commit_sha = result.stdout.strip()
 
     # Push
-    subprocess.run(["git", "push"], cwd=artifacts_dir, capture_output=True, check=True)
+    push_result = subprocess.run(
+        ["git", "push"],
+        cwd=artifacts_dir,
+        capture_output=True,
+        text=True,
+    )
+    if push_result.returncode != 0:
+        error_msg = push_result.stderr or push_result.stdout or "Unknown error"
+        if "permission" in error_msg.lower() or "403" in error_msg or "authentication" in error_msg.lower():
+            raise RuntimeError(
+                f"Git push failed - permission denied. "
+                f"Make sure ARTIFACT_REPO_TOKEN secret is set with repo scope. "
+                f"Error: {error_msg}"
+            )
+        raise RuntimeError(f"Git push failed: {error_msg}")
 
     if logger:
         logger.info(f"Pushed commit: {commit_sha[:7]}")
