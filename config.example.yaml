@@ -1,0 +1,139 @@
+# LocalStack Quality Monitor (LSQM) Configuration Example
+# Copy this file to ~/.lsqm/config.yaml and customize as needed
+# Environment variables override these values
+
+# =============================================================================
+# Required API Keys and Repository Settings
+# =============================================================================
+
+# Anthropic API key for Claude code generation (required)
+# Can also be set via ANTHROPIC_API_KEY environment variable
+anthropic_api_key: ""
+
+# GitHub personal access token with repo scope (required)
+# Can also be set via GITHUB_TOKEN environment variable
+github_token: ""
+
+# GitHub repository for storing artifacts in format "owner/repo" (required)
+# Can also be set via ARTIFACT_REPO environment variable
+artifact_repo: "your-org/lsqm-artifacts"
+
+# =============================================================================
+# Optional Settings with Defaults
+# =============================================================================
+
+# Token budget for Claude API calls per session (default: 500000)
+# Can also be set via ANTHROPIC_TOKEN_BUDGET environment variable
+token_budget: 500000
+
+# LocalStack version to test against (default: "latest")
+# Can also be set via LOCALSTACK_VERSION environment variable
+localstack_version: "latest"
+
+# Number of parallel validation workers (default: 4)
+# Can also be set via LSQM_PARALLEL environment variable
+parallel: 4
+
+# Timeout in seconds for each validation (default: 300)
+# Can also be set via LSQM_TIMEOUT environment variable
+timeout: 300
+
+# Slack webhook URL for notifications (optional)
+# Can also be set via SLACK_WEBHOOK_URL environment variable
+slack_webhook_url: ""
+
+# GitHub repository for creating issues on regressions (default: "localstack/localstack")
+# Can also be set via ISSUE_REPO environment variable
+issue_repo: "localstack/localstack"
+
+# =============================================================================
+# Discovery Sources Configuration
+# =============================================================================
+# Configure which sources to use for discovering AWS architectures
+# Each source can be enabled/disabled and has specific settings
+
+sources:
+  # Terraform Registry - discovers popular Terraform modules
+  terraform_registry:
+    enabled: true
+    # Providers to search for modules (aws, azurerm, google, etc.)
+    providers:
+      - aws
+    # Maximum modules to fetch per provider
+    limit_per_provider: 100
+    # Minimum download count to filter popular modules
+    min_downloads: 1000
+
+  # GitHub Organizations - searches for Terraform files in specific orgs
+  github_orgs:
+    enabled: true
+    # Organizations to search
+    organizations:
+      - aws-quickstart
+      - aws-solutions
+      - aws-samples
+      - hashicorp
+      - terraform-aws-modules
+    # File patterns to search for
+    file_patterns:
+      - "*.tf"
+      - "**/*.tf"
+    # Maximum files to process per repository
+    max_files_per_repo: 50
+    # Skip archived repositories
+    skip_archived: true
+    # Skip forked repositories
+    skip_forks: true
+
+  # Serverless Framework - discovers serverless.yml configurations
+  serverless:
+    enabled: true
+    # GitHub search queries to find serverless projects
+    search_queries:
+      - "serverless.yml aws"
+      - "serverless.yaml aws lambda"
+      - "serverless framework aws"
+    # Maximum search results to process
+    max_results: 100
+
+  # AWS CDK - discovers CDK infrastructure patterns
+  cdk:
+    enabled: true
+    # Specific CDK repositories to analyze
+    repositories:
+      - aws-samples/aws-cdk-examples
+      - cdk-patterns/serverless
+      - aws-samples/serverless-patterns
+    # Languages to look for in CDK projects
+    languages:
+      - typescript
+      - python
+      - java
+
+  # Custom Sources - add your own repositories or local paths
+  custom:
+    enabled: false
+    # List of GitHub repository URLs to include
+    repositories: []
+    # List of local directory paths to include
+    local_paths: []
+
+# =============================================================================
+# Example Minimal Configuration
+# =============================================================================
+# Uncomment the following for a minimal configuration that only uses
+# the Terraform Registry source:
+#
+# sources:
+#   terraform_registry:
+#     enabled: true
+#     providers: [aws]
+#     limit_per_provider: 50
+#   github_orgs:
+#     enabled: false
+#   serverless:
+#     enabled: false
+#   cdk:
+#     enabled: false
+#   custom:
+#     enabled: false

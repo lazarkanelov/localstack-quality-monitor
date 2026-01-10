@@ -31,7 +31,16 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+| Principle | Requirement | Status |
+|-----------|-------------|--------|
+| I. Continuous Discovery | New architectures discovered incrementally; no re-downloading known patterns | [ ] Pass / [ ] N/A |
+| II. Regression Detection | Comparison against previous runs; alerts on regressions | [ ] Pass / [ ] N/A |
+| III. AWS API Fidelity | Real boto3 calls; official AWS provider; no LocalStack workarounds | [ ] Pass / [ ] N/A |
+| IV. Reproducibility | Content-hash deduplication; deterministic ordering; pinned versions | [ ] Pass / [ ] N/A |
+| V. Isolation | Fresh container per validation; no shared state | [ ] Pass / [ ] N/A |
+| VI. Graceful Degradation | Single failure cannot halt pipeline; partial results recorded | [ ] Pass / [ ] N/A |
+| VII. Budget Awareness | Token budgets enforced; caching used; skip unchanged | [ ] Pass / [ ] N/A |
+| VIII. Operational Excellence | Unattended runs; Slack notifications; self-cleaning; clear logs | [ ] Pass / [ ] N/A |
 
 ## Project Structure
 

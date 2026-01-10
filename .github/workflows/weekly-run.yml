@@ -1,0 +1,390 @@
+name: Weekly Quality Monitor
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Sunday at 00:00 UTC
+  workflow_dispatch:
+    inputs:
+      localstack_version:
+        description: 'LocalStack version to test'
+        required: false
+        default: 'latest'
+      discovery_limit:
+        description: 'Max architectures to discover (0=unlimited)'
+        required: false
+        default: '100'
+      token_budget:
+        description: 'Claude API token budget'
+        required: false
+        default: '500000'
+
+env:
+  PYTHON_VERSION: '3.11'
+  TERRAFORM_VERSION: '1.6.0'
+
+jobs:
+  # Step 1: Sync existing artifacts from the artifact repository
+  sync:
+    name: Sync Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install LSQM
+        run: pip install -e .
+
+      - name: Sync Artifacts from Repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+        run: lsqm sync
+
+      - name: Cache artifacts
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-${{ github.run_id }}
+
+  # Step 2: Discover new architectures and save terraform files
+  mine:
+    name: Discover Architectures
+    runs-on: ubuntu-latest
+    needs: sync
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install LSQM
+        run: pip install -e .
+
+      - name: Restore artifacts cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-${{ github.run_id }}
+
+      - name: Discover New Architectures
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+        run: |
+          lsqm mine --limit ${{ github.event.inputs.discovery_limit || '100' }}
+
+      - name: Save updated artifacts cache
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-mined-${{ github.run_id }}
+
+  # Step 3: Generate test applications using Claude API
+  generate:
+    name: Generate Test Apps
+    runs-on: ubuntu-latest
+    needs: mine
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install LSQM
+        run: pip install -e .
+
+      - name: Restore artifacts cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-mined-${{ github.run_id }}
+
+      - name: Generate Test Applications
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+          ANTHROPIC_TOKEN_BUDGET: ${{ github.event.inputs.token_budget || '500000' }}
+        run: lsqm generate --budget $ANTHROPIC_TOKEN_BUDGET
+
+      - name: Save generated artifacts cache
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-generated-${{ github.run_id }}
+
+  # Step 4: Run validation against LocalStack
+  validate:
+    name: Validate (${{ matrix.localstack_version }})
+    runs-on: ubuntu-latest
+    needs: generate
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        localstack_version: ['latest']
+
+    services:
+      localstack:
+        image: localstack/localstack:${{ matrix.localstack_version }}
+        ports:
+          - 4566:4566
+        options: >-
+          --health-cmd="curl -f http://localhost:4566/_localstack/health"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Install tflocal
+        run: pip install terraform-local
+
+      - name: Install LSQM
+        run: pip install -e .
+
+      - name: Restore generated artifacts cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-generated-${{ github.run_id }}
+
+      - name: Wait for LocalStack
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:4566/_localstack/health; do sleep 2; done'
+
+      - name: Run Validation
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+          LOCALSTACK_ENDPOINT: http://localhost:4566
+          LOCALSTACK_VERSION: ${{ matrix.localstack_version }}
+        run: |
+          lsqm validate --parallel 2 --timeout 300
+
+      - name: Save validated artifacts cache
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-validated-${{ github.run_id }}
+
+  # Step 5: Generate HTML report
+  report:
+    name: Generate Report
+    runs-on: ubuntu-latest
+    needs: validate
+    if: always() && needs.validate.result != 'cancelled'
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install LSQM
+        run: pip install -e .
+
+      - name: Restore validated artifacts cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-validated-${{ github.run_id }}
+
+      - name: Generate Report
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+        run: lsqm report
+
+      - name: Save final artifacts cache
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-final-${{ github.run_id }}
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-report
+          path: ~/.lsqm/cache/reports/
+          retention-days: 90
+
+  # Step 6: Compare with previous run
+  compare:
+    name: Compare Results
+    runs-on: ubuntu-latest
+    needs: report
+    timeout-minutes: 10
+    outputs:
+      has_regressions: ${{ steps.compare.outputs.has_regressions }}
+      regression_count: ${{ steps.compare.outputs.regression_count }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install LSQM
+        run: pip install -e .
+
+      - name: Restore final artifacts cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-final-${{ github.run_id }}
+
+      - name: Compare with Previous Run
+        id: compare
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+        run: |
+          if lsqm compare --output json > comparison.json 2>&1; then
+            echo "has_regressions=false" >> $GITHUB_OUTPUT
+            echo "regression_count=0" >> $GITHUB_OUTPUT
+          else
+            echo "has_regressions=true" >> $GITHUB_OUTPUT
+            count=$(jq '.regressions_count // 0' comparison.json 2>/dev/null || echo "0")
+            echo "regression_count=$count" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload comparison results
+        uses: actions/upload-artifact@v4
+        with:
+          name: comparison-results
+          path: comparison.json
+          retention-days: 30
+
+  # Step 7: Push all artifacts to the artifact repository
+  push:
+    name: Push to Artifact Repo
+    runs-on: ubuntu-latest
+    needs: [report, compare]
+    if: always() && needs.report.result == 'success'
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install LSQM
+        run: pip install -e .
+
+      - name: Restore final artifacts cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.lsqm/cache/artifacts
+          key: lsqm-artifacts-final-${{ github.run_id }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "LSQM Bot"
+          git config --global user.email "lsqm@github-actions.bot"
+
+      - name: Push All Artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+        run: |
+          # Show what will be pushed
+          echo "=== Artifact Repository Contents ==="
+          ls -la ~/.lsqm/cache/artifacts/ || true
+          echo ""
+          echo "=== Architectures (Terraform files) ==="
+          ls -la ~/.lsqm/cache/artifacts/architectures/ 2>/dev/null | head -20 || echo "No architectures"
+          echo ""
+          echo "=== Generated Apps (Python source) ==="
+          ls -la ~/.lsqm/cache/artifacts/apps/ 2>/dev/null | head -20 || echo "No apps"
+          echo ""
+
+          # Push to artifact repo
+          lsqm push --message "Weekly run $(date +%Y-%m-%d): architectures and apps updated"
+
+  # Step 8: Send notifications
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [compare, push]
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install LSQM
+        run: pip install -e .
+
+      - name: Send Slack Notification
+        if: vars.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO || format('{0}/lsqm-artifacts', github.repository_owner) }}
+        run: lsqm notify
+
+      - name: Create Summary
+        run: |
+          echo "## LocalStack Quality Monitor - Weekly Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run completed:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.compare.outputs.has_regressions }}" == "true" ]; then
+            echo ":warning: **Regressions detected:** ${{ needs.compare.outputs.regression_count }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo ":white_check_mark: **No regressions detected**" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts Pushed" >> $GITHUB_STEP_SUMMARY
+          echo "- Terraform files for each architecture" >> $GITHUB_STEP_SUMMARY
+          echo "- Generated Python test applications" >> $GITHUB_STEP_SUMMARY
+          echo "- Validation results and reports" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View full report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
