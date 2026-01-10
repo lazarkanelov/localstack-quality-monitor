@@ -1,0 +1,137 @@
+# LSQM Sources Configuration
+# Copy this file to ~/.lsqm/sources.yaml or ./sources.yaml to customize
+#
+# This file defines where LSQM discovers Terraform architectures for testing.
+# All sources are optional - disable any you don't want to use.
+
+# =============================================================================
+# GitHub Repositories - Specific repositories to scan
+# =============================================================================
+# Use this to add individual repositories containing Terraform code.
+# This is the most direct way to add new architectures.
+
+github_repos:
+  enabled: true
+
+  repositories:
+    # Full URL format with optional settings
+    - url: https://github.com/terraform-aws-modules/terraform-aws-vpc
+      branch: master              # optional, defaults to main/master
+      paths:                      # optional, specific paths to scan
+        - "."
+        - "examples/"
+
+    # Shorthand format: owner/repo
+    - terraform-aws-modules/terraform-aws-lambda
+    - terraform-aws-modules/terraform-aws-s3-bucket
+    - terraform-aws-modules/terraform-aws-dynamodb-table
+    - terraform-aws-modules/terraform-aws-sqs
+    - terraform-aws-modules/terraform-aws-sns
+    - terraform-aws-modules/terraform-aws-apigateway-v2
+
+    # Add your own repositories here:
+    # - your-org/your-terraform-repo
+
+# =============================================================================
+# GitHub Organizations - Scan entire organizations
+# =============================================================================
+# Discovers Terraform files across all repositories in specified organizations.
+# Good for scanning official AWS examples.
+
+github_orgs:
+  enabled: true
+
+  organizations:
+    - aws-quickstart
+    - aws-solutions
+    - aws-samples
+
+  # File patterns to look for
+  file_patterns:
+    - "*.tf"
+    - "**/*.tf"
+
+  # Limits per organization
+  max_repos_per_org: 50
+  max_files_per_repo: 50
+
+  # Skip certain types of repos
+  skip_archived: true
+  skip_forks: true
+  min_stars: 0              # Minimum stars required (0 = no minimum)
+
+# =============================================================================
+# Terraform Registry - Official HashiCorp module registry
+# =============================================================================
+# Searches registry.terraform.io for popular AWS modules.
+
+terraform_registry:
+  enabled: true
+
+  # Search queries to find modules
+  search_queries:
+    - vpc
+    - lambda
+    - s3
+    - dynamodb
+    - sqs
+    - sns
+    - api-gateway
+    - ecs
+    - rds
+    - step-functions
+
+  # Only include modules with at least this many downloads
+  min_downloads: 1000
+
+  # Maximum modules to fetch per search query
+  limit_per_query: 20
+
+# =============================================================================
+# Serverless Framework Examples
+# =============================================================================
+# Discovers architectures from Serverless Framework examples.
+# These are converted to Terraform for testing.
+
+serverless:
+  enabled: false            # Disabled by default - requires conversion
+
+  repository: serverless/examples
+
+  # Only scan examples matching these patterns
+  include_patterns:
+    - "aws-*"
+    - "*-dynamodb*"
+    - "*-s3*"
+
+# =============================================================================
+# AWS CDK Examples
+# =============================================================================
+# Discovers architectures from AWS CDK example repositories.
+# These are synthesized to CloudFormation for testing.
+
+cdk:
+  enabled: false            # Disabled by default - requires synthesis
+
+  repositories:
+    - aws-samples/aws-cdk-examples
+    - cdk-patterns/serverless
+
+  # Only scan these languages
+  languages:
+    - typescript
+    - python
+
+# =============================================================================
+# Local Paths - Test local Terraform configurations
+# =============================================================================
+# Scan local directories for Terraform files.
+# Useful for testing your own infrastructure code.
+
+local:
+  enabled: false
+
+  paths:
+    # Add paths to your local Terraform projects:
+    # - /path/to/your/terraform/project
+    # - ~/projects/infrastructure

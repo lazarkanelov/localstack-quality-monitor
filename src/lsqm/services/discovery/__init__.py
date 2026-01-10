@@ -34,6 +34,7 @@ def discover_architectures(
     """
     from lsqm.services.discovery.cdk_examples import discover_cdk_examples
     from lsqm.services.discovery.github_orgs import discover_github_orgs
+    from lsqm.services.discovery.github_repos import discover_github_repos
     from lsqm.services.discovery.serverless import discover_serverless
     from lsqm.services.discovery.terraform_registry import discover_terraform_registry
 
@@ -42,6 +43,7 @@ def discover_architectures(
     discovered: list[Architecture] = []
 
     source_functions = {
+        "github_repos": discover_github_repos,
         "terraform_registry": discover_terraform_registry,
         "github_orgs": discover_github_orgs,
         "github": discover_github_orgs,  # Alias for backward compatibility
@@ -72,7 +74,9 @@ def discover_architectures(
 
             # Pass source-specific config if available
             if sources_config:
-                if source == "terraform_registry":
+                if source == "github_repos":
+                    kwargs["config"] = sources_config.github_repos
+                elif source == "terraform_registry":
                     kwargs["config"] = sources_config.terraform_registry
                 elif source in ("github_orgs", "github"):
                     kwargs["config"] = sources_config.github_orgs

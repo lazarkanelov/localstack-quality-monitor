@@ -7,8 +7,9 @@ import yaml
 
 from lsqm.utils.config import (
     CDKSourceConfig,
-    CustomSourceConfig,
     GitHubOrgsSourceConfig,
+    GitHubReposSourceConfig,
+    LocalSourceConfig,
     LSQMConfig,
     ServerlessSourceConfig,
     SourcesConfig,
@@ -404,13 +405,19 @@ class TestSourcesConfig:
         assert "typescript" in config.languages
         assert "python" in config.languages
 
-    def test_custom_source_defaults(self):
-        """Test CustomSourceConfig default values."""
-        config = CustomSourceConfig()
+    def test_github_repos_source_defaults(self):
+        """Test GitHubReposSourceConfig default values."""
+        config = GitHubReposSourceConfig()
+
+        assert config.enabled is True
+        assert config.repositories == []
+
+    def test_local_source_defaults(self):
+        """Test LocalSourceConfig default values."""
+        config = LocalSourceConfig()
 
         assert config.enabled is False
-        assert config.repositories == []
-        assert config.local_paths == []
+        assert config.paths == []
 
     def test_sources_config_from_dict_empty(self):
         """Test SourcesConfig.from_dict with empty dict."""
@@ -420,7 +427,8 @@ class TestSourcesConfig:
         assert config.github_orgs.enabled is True
         assert config.serverless.enabled is True
         assert config.cdk.enabled is True
-        assert config.custom.enabled is False
+        assert config.github_repos.enabled is True
+        assert config.local.enabled is False
 
     def test_sources_config_from_dict_bool_disable(self):
         """Test SourcesConfig.from_dict with boolean to disable source."""
@@ -458,10 +466,16 @@ class TestSourcesConfig:
                 "repositories": ["custom/repo"],
                 "languages": ["python"],
             },
-            "custom": {
+            "github_repos": {
                 "enabled": True,
-                "repositories": ["https://github.com/test/repo"],
-                "local_paths": ["/path/to/local"],
+                "repositories": [
+                    "https://github.com/test/repo",
+                    "owner/repo",
+                ],
+            },
+            "local": {
+                "enabled": True,
+                "paths": ["/path/to/local"],
             },
         }
 
@@ -481,9 +495,13 @@ class TestSourcesConfig:
         assert config.cdk.repositories == ["custom/repo"]
         assert config.cdk.languages == ["python"]
 
-        assert config.custom.enabled is True
-        assert "https://github.com/test/repo" in config.custom.repositories
-        assert "/path/to/local" in config.custom.local_paths
+        assert config.github_repos.enabled is True
+        assert len(config.github_repos.repositories) == 2
+        assert config.github_repos.repositories[0].url == "https://github.com/test/repo"
+        assert config.github_repos.repositories[1].url == "https://github.com/owner/repo"
+
+        assert config.local.enabled is True
+        assert "/path/to/local" in config.local.paths
 
     def test_sources_config_to_dict(self):
         """Test SourcesConfig.to_dict serialization."""
@@ -494,24 +512,25 @@ class TestSourcesConfig:
         assert "github_orgs" in data
         assert "serverless" in data
         assert "cdk" in data
-        assert "custom" in data
+        assert "github_repos" in data
+        assert "local" in data
 
         assert data["terraform_registry"]["enabled"] is True
-        assert data["custom"]["enabled"] is False
+        assert data["local"]["enabled"] is False
 
     def test_sources_config_roundtrip(self):
         """Test SourcesConfig to_dict/from_dict roundtrip."""
         original = SourcesConfig()
         original.terraform_registry.enabled = False
-        original.custom.enabled = True
-        original.custom.repositories = ["test-repo"]
+        original.local.enabled = True
+        original.local.paths = ["/test/path"]
 
         data = original.to_dict()
         restored = SourcesConfig.from_dict(data)
 
         assert restored.terraform_registry.enabled == original.terraform_registry.enabled
-        assert restored.custom.enabled == original.custom.enabled
-        assert restored.custom.repositories == original.custom.repositories
+        assert restored.local.enabled == original.local.enabled
+        assert restored.local.paths == original.local.paths
 
     def test_sources_config_github_orgs_list_shorthand(self):
         """Test SourcesConfig.from_dict with list shorthand for github_orgs."""

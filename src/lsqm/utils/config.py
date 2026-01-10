@@ -58,23 +58,62 @@ class CDKSourceConfig:
 
 
 @dataclass
-class CustomSourceConfig:
-    """Configuration for custom/manual architecture sources."""
+class GitHubRepoConfig:
+    """Configuration for a single GitHub repository."""
+
+    url: str = ""
+    branch: str = ""  # Empty = auto-detect main/master
+    paths: list[str] = field(default_factory=lambda: ["."])
+
+    @classmethod
+    def from_value(cls, value: str | dict) -> "GitHubRepoConfig":
+        """Create from string (shorthand) or dict (full config)."""
+        if isinstance(value, str):
+            # Shorthand: "owner/repo" or full URL
+            if value.startswith("http"):
+                return cls(url=value)
+            else:
+                return cls(url=f"https://github.com/{value}")
+        elif isinstance(value, dict):
+            url = value.get("url", "")
+            if not url.startswith("http") and "/" in url:
+                url = f"https://github.com/{url}"
+            return cls(
+                url=url,
+                branch=value.get("branch", ""),
+                paths=value.get("paths", ["."]),
+            )
+        return cls()
+
+
+@dataclass
+class GitHubReposSourceConfig:
+    """Configuration for direct GitHub repository discovery."""
+
+    enabled: bool = True
+    repositories: list[GitHubRepoConfig] = field(default_factory=list)
+
+
+@dataclass
+class LocalSourceConfig:
+    """Configuration for local directory sources."""
 
     enabled: bool = False
-    repositories: list[str] = field(default_factory=list)  # List of repo URLs
-    local_paths: list[str] = field(default_factory=list)  # Local directories
+    paths: list[str] = field(default_factory=list)
 
 
 @dataclass
 class SourcesConfig:
     """Combined configuration for all discovery sources."""
 
-    terraform_registry: TerraformRegistrySourceConfig = field(
-        default_factory=TerraformRegistrySourceConfig
+    github_repos: GitHubReposSourceConfig = field(
+        default_factory=GitHubReposSourceConfig
     )
     github_orgs: GitHubOrgsSourceConfig = field(
         default_factory=GitHubOrgsSourceConfig
+    )
+    terraform_registry: TerraformRegistrySourceConfig = field(
+        default_factory=TerraformRegistrySourceConfig
     )
     serverless: ServerlessSourceConfig = field(
         default_factory=ServerlessSourceConfig
@@ -82,8 +121,8 @@ class SourcesConfig:
     cdk: CDKSourceConfig = field(
         default_factory=CDKSourceConfig
     )
-    custom: CustomSourceConfig = field(
-        default_factory=CustomSourceConfig
+    local: LocalSourceConfig = field(
+        default_factory=LocalSourceConfig
     )
 
     @classmethod
@@ -91,19 +130,24 @@ class SourcesConfig:
         """Create SourcesConfig from dictionary."""
         config = cls()
 
-        if "terraform_registry" in data:
-            tr = data["terraform_registry"]
-            if isinstance(tr, bool):
-                config.terraform_registry.enabled = tr
-            elif isinstance(tr, dict):
-                config.terraform_registry.enabled = tr.get("enabled", True)
-                if "providers" in tr:
-                    config.terraform_registry.providers = tr["providers"]
-                if "limit_per_provider" in tr:
-                    config.terraform_registry.limit_per_provider = tr["limit_per_provider"]
-                if "min_downloads" in tr:
-                    config.terraform_registry.min_downloads = tr["min_downloads"]
+        # GitHub Repos - direct repository URLs
+        if "github_repos" in data:
+            gr = data["github_repos"]
+            if isinstance(gr, bool):
+                config.github_repos.enabled = gr
+            elif isinstance(gr, list):
+                # Shorthand: just a list of repos
+                config.github_repos.repositories = [
+                    GitHubRepoConfig.from_value(r) for r in gr
+                ]
+            elif isinstance(gr, dict):
+                config.github_repos.enabled = gr.get("enabled", True)
+                if "repositories" in gr:
+                    config.github_repos.repositories = [
+                        GitHubRepoConfig.from_value(r) for r in gr["repositories"]
+                    ]
 
+        # GitHub Organizations
         if "github_orgs" in data:
             gh = data["github_orgs"]
             if isinstance(gh, bool):
@@ -123,6 +167,25 @@ class SourcesConfig:
                 if "skip_forks" in gh:
                     config.github_orgs.skip_forks = gh["skip_forks"]
 
+        # Terraform Registry
+        if "terraform_registry" in data:
+            tr = data["terraform_registry"]
+            if isinstance(tr, bool):
+                config.terraform_registry.enabled = tr
+            elif isinstance(tr, dict):
+                config.terraform_registry.enabled = tr.get("enabled", True)
+                if "providers" in tr:
+                    config.terraform_registry.providers = tr["providers"]
+                if "search_queries" in tr:
+                    config.terraform_registry.providers = tr["search_queries"]
+                if "limit_per_provider" in tr or "limit_per_query" in tr:
+                    config.terraform_registry.limit_per_provider = tr.get(
+                        "limit_per_provider", tr.get("limit_per_query", 100)
+                    )
+                if "min_downloads" in tr:
+                    config.terraform_registry.min_downloads = tr["min_downloads"]
+
+        # Serverless
         if "serverless" in data:
             sl = data["serverless"]
             if isinstance(sl, bool):
@@ -134,6 +197,7 @@ class SourcesConfig:
                 if "max_results" in sl:
                     config.serverless.max_results = sl["max_results"]
 
+        # CDK
         if "cdk" in data:
             cdk = data["cdk"]
             if isinstance(cdk, bool):
@@ -145,25 +209,30 @@ class SourcesConfig:
                 if "languages" in cdk:
                     config.cdk.languages = cdk["languages"]
 
-        if "custom" in data:
-            custom = data["custom"]
-            if isinstance(custom, dict):
-                config.custom.enabled = custom.get("enabled", False)
-                if "repositories" in custom:
-                    config.custom.repositories = custom["repositories"]
-                if "local_paths" in custom:
-                    config.custom.local_paths = custom["local_paths"]
+        # Local paths
+        if "local" in data:
+            local = data["local"]
+            if isinstance(local, bool):
+                config.local.enabled = local
+            elif isinstance(local, list):
+                config.local.enabled = True
+                config.local.paths = local
+            elif isinstance(local, dict):
+                config.local.enabled = local.get("enabled", False)
+                if "paths" in local:
+                    config.local.paths = local["paths"]
 
         return config
 
     def to_dict(self) -> dict:
         """Serialize to dictionary."""
         return {
-            "terraform_registry": {
-                "enabled": self.terraform_registry.enabled,
-                "providers": self.terraform_registry.providers,
-                "limit_per_provider": self.terraform_registry.limit_per_provider,
-                "min_downloads": self.terraform_registry.min_downloads,
+            "github_repos": {
+                "enabled": self.github_repos.enabled,
+                "repositories": [
+                    {"url": r.url, "branch": r.branch, "paths": r.paths}
+                    for r in self.github_repos.repositories
+                ],
             },
             "github_orgs": {
                 "enabled": self.github_orgs.enabled,
@@ -172,6 +241,12 @@ class SourcesConfig:
                 "max_files_per_repo": self.github_orgs.max_files_per_repo,
                 "skip_archived": self.github_orgs.skip_archived,
                 "skip_forks": self.github_orgs.skip_forks,
+            },
+            "terraform_registry": {
+                "enabled": self.terraform_registry.enabled,
+                "providers": self.terraform_registry.providers,
+                "limit_per_provider": self.terraform_registry.limit_per_provider,
+                "min_downloads": self.terraform_registry.min_downloads,
             },
             "serverless": {
                 "enabled": self.serverless.enabled,
@@ -183,10 +258,9 @@ class SourcesConfig:
                 "repositories": self.cdk.repositories,
                 "languages": self.cdk.languages,
             },
-            "custom": {
-                "enabled": self.custom.enabled,
-                "repositories": self.custom.repositories,
-                "local_paths": self.custom.local_paths,
+            "local": {
+                "enabled": self.local.enabled,
+                "paths": self.local.paths,
             },
         }
 
@@ -242,10 +316,18 @@ class LSQMConfig:
         return self.artifact_repo
 
 
-def load_config(config_path: Path | None = None) -> LSQMConfig:
-    """Load configuration from environment variables and optional YAML file.
+def load_config(config_path: Path | None = None, sources_path: Path | None = None) -> LSQMConfig:
+    """Load configuration from environment variables and optional YAML files.
 
-    Environment variables take precedence over YAML file values.
+    Configuration is loaded in order (later overrides earlier):
+    1. Default values
+    2. ~/.lsqm/config.yaml (main config)
+    3. ./sources.yaml or ~/.lsqm/sources.yaml (sources config)
+    4. Environment variables
+
+    Args:
+        config_path: Path to main config file (default: ~/.lsqm/config.yaml)
+        sources_path: Path to sources config file (default: ./sources.yaml or ~/.lsqm/sources.yaml)
     """
     config = LSQMConfig()
 
@@ -255,7 +337,7 @@ def load_config(config_path: Path | None = None) -> LSQMConfig:
         if default_path.exists():
             config_path = default_path
 
-    # Load from YAML if available
+    # Load from main YAML if available
     if config_path and config_path.exists():
         config.config_path = config_path
         with open(config_path) as f:
@@ -282,6 +364,21 @@ def load_config(config_path: Path | None = None) -> LSQMConfig:
             config.issue_repo = yaml_config["issue_repo"]
         if "sources" in yaml_config:
             config.sources = SourcesConfig.from_dict(yaml_config["sources"])
+
+    # Load sources from separate file if available
+    # Priority: explicit path > ./sources.yaml > ~/.lsqm/sources.yaml
+    if sources_path is None:
+        local_sources = Path("sources.yaml")
+        home_sources = Path.home() / ".lsqm" / "sources.yaml"
+        if local_sources.exists():
+            sources_path = local_sources
+        elif home_sources.exists():
+            sources_path = home_sources
+
+    if sources_path and sources_path.exists():
+        with open(sources_path) as f:
+            sources_yaml = yaml.safe_load(f) or {}
+        config.sources = SourcesConfig.from_dict(sources_yaml)
 
     # Override with environment variables (strip whitespace to handle common input errors)
     if env_key := os.getenv("ANTHROPIC_API_KEY"):

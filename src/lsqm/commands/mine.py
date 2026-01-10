@@ -8,6 +8,9 @@ from lsqm.cli import pass_context
 def _get_enabled_sources(config) -> list[str]:
     """Get list of enabled sources from config."""
     sources = []
+    # github_repos first - most direct and reliable
+    if config.sources.github_repos.enabled and config.sources.github_repos.repositories:
+        sources.append("github_repos")
     if config.sources.terraform_registry.enabled:
         sources.append("terraform_registry")
     if config.sources.github_orgs.enabled:
@@ -16,16 +19,18 @@ def _get_enabled_sources(config) -> list[str]:
         sources.append("serverless")
     if config.sources.cdk.enabled:
         sources.append("cdk")
-    if config.sources.custom.enabled:
-        sources.append("custom")
     return sources
+
+
+# Available source types for CLI
+SOURCE_CHOICES = ["github_repos", "terraform_registry", "github_orgs", "serverless", "cdk"]
 
 
 @click.command()
 @click.option(
     "--source",
     multiple=True,
-    type=click.Choice(["terraform_registry", "github_orgs", "serverless", "cdk", "custom"]),
+    type=click.Choice(SOURCE_CHOICES),
     help="Sources to mine (default: all enabled in config)",
 )
 @click.option("--limit", type=int, default=0, help="Max architectures to discover (0=unlimited)")
