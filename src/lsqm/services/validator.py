@@ -206,11 +206,13 @@ async def _validate_single(
         # Create temp directory with Terraform and app files
         temp_dir = Path(tempfile.mkdtemp(prefix=f"lsqm_{arch_hash}_"))
 
-        # Copy Terraform files
+        # Copy Terraform files (.tf and .tfvars)
         arch_dir = artifacts_dir / "architectures" / arch_hash
         if arch_dir.exists():
             for tf_file in arch_dir.glob("*.tf"):
                 shutil.copy(tf_file, temp_dir)
+            for tfvars_file in arch_dir.glob("*.tfvars"):
+                shutil.copy(tfvars_file, temp_dir)
 
         # Copy app files
         app_dir = artifacts_dir / "apps" / arch_hash
@@ -220,6 +222,10 @@ async def _validate_single(
             req_file = app_dir / "requirements.txt"
             if req_file.exists():
                 shutil.copy(req_file, temp_dir)
+            # Copy generated terraform.tfvars if it exists (may override arch tfvars)
+            tfvars_file = app_dir / "terraform.tfvars"
+            if tfvars_file.exists():
+                shutil.copy(tfvars_file, temp_dir)
 
         # Start LocalStack container
         # Always include iam and sts as they're required by Terraform's AWS provider

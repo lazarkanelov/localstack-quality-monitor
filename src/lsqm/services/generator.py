@@ -3,6 +3,7 @@
 import ast
 import json
 import logging
+import re
 import time
 from pathlib import Path
 
@@ -13,6 +14,53 @@ from lsqm import __version__
 # Retry configuration for Claude API
 MAX_RETRIES = 3
 INITIAL_BACKOFF = 5  # seconds
+
+
+def _check_tfvars_needed(tf_files: dict[str, str]) -> tuple[bool, str | None]:
+    """Check if terraform.tfvars is needed based on variables.tf.
+
+    Returns:
+        Tuple of (needs_tfvars, variables_content)
+    """
+    variables_content = None
+
+    # Find variables.tf content
+    for filename, content in tf_files.items():
+        if filename.endswith("variables.tf") or filename == "variables.tf":
+            variables_content = content
+            break
+
+    if not variables_content:
+        return False, None
+
+    # Check if tfvars already exists in the module
+    for filename in tf_files:
+        if filename.endswith(".tfvars") or filename.endswith(".auto.tfvars"):
+            return False, variables_content  # tfvars exists, don't need to generate
+
+    # Check for required variables without defaults
+    # Look for variable blocks without default = ...
+    var_pattern = r'variable\s+"([^"]+)"\s*\{([^}]+)\}'
+    matches = re.findall(var_pattern, variables_content, re.DOTALL)
+
+    for _var_name, var_body in matches:
+        # Check if this variable has a default
+        has_default = "default" in var_body and "=" in var_body.split("default")[1][:20]
+        is_optional = "optional(" in var_body
+
+        if not has_default and not is_optional:
+            # Found a required variable without default
+            return True, variables_content
+
+    return False, variables_content
+
+
+def _find_example_tfvars(tf_files: dict[str, str]) -> str | None:
+    """Find example tfvars content from the module's examples directory."""
+    for filename, content in tf_files.items():
+        if "example" in filename.lower() and filename.endswith(".tfvars"):
+            return content
+    return None
 
 
 # Prompt template for realistic application generation
@@ -129,8 +177,37 @@ Output ONLY a JSON object in this exact format (no markdown code blocks, no othe
   "conftest.py": "...",
   "app.py": "...",
   "test_app.py": "...",
-  "requirements.txt": "..."
+  "requirements.txt": "..."{tfvars_output}
 }}"""
+
+# Additional prompt section for terraform.tfvars generation
+TFVARS_PROMPT_SECTION = """
+
+### 5. terraform.tfvars (REQUIRED for this module)
+The Terraform module has required variables without defaults. You MUST generate a terraform.tfvars file with valid values.
+
+Here is the variables.tf content:
+```hcl
+{variables_content}
+```
+
+{example_tfvars_section}
+
+Generate terraform.tfvars with:
+- Valid values for ALL required variables
+- Use realistic but simple values (e.g., "test-vpc" for names, "10.0.0.0/16" for CIDRs)
+- For complex nested objects, provide complete valid structures
+- Use "us-east-1" for region, "us-east-1a" and "us-east-1b" for AZs
+- The values you choose here MUST match what you use in conftest.py fixtures
+
+IMPORTANT: The infrastructure_config fixture in conftest.py MUST use the SAME values as terraform.tfvars so tests can validate the created resources."""
+
+EXAMPLE_TFVARS_HINT = """
+Here is an example tfvars from the module that you can use as reference:
+```hcl
+{example_content}
+```
+Adapt this example for a simple test configuration."""
 
 
 def generate_test_apps(
@@ -216,30 +293,75 @@ def _generate_single_app(
     logger: logging.Logger | None = None,
 ) -> dict:
     """Generate test app for a single architecture."""
-    # Load Terraform content
+    # Load Terraform content and build tf_files dict
     arch_dir = artifacts_dir / "architectures" / arch_hash
     tf_content = ""
+    tf_files: dict[str, str] = {}
 
     if arch_dir.exists():
+        # Load .tf files
         for tf_file in arch_dir.glob("*.tf"):
             with open(tf_file) as f:
-                tf_content += f"\n# {tf_file.name}\n{f.read()}"
+                content = f.read()
+                tf_files[tf_file.name] = content
+                tf_content += f"\n# {tf_file.name}\n{content}"
+        # Load .tfvars files
+        for tfvars_file in arch_dir.glob("*.tfvars"):
+            with open(tfvars_file) as f:
+                tf_files[tfvars_file.name] = f.read()
+        # Load from examples/ subdirectory
+        examples_dir = arch_dir / "examples"
+        if examples_dir.exists():
+            for example_file in examples_dir.rglob("*.tfvars"):
+                rel_path = example_file.relative_to(arch_dir)
+                with open(example_file) as f:
+                    tf_files[str(rel_path)] = f.read()
     else:
         # Use embedded terraform_files if available
         tf_files = arch_data.get("terraform_files", {})
         for name, content in tf_files.items():
-            tf_content += f"\n# {name}\n{content}"
+            if name.endswith(".tf"):
+                tf_content += f"\n# {name}\n{content}"
 
     if not tf_content:
         return {"success": False, "error": "No Terraform content found", "tokens": 0}
 
     services = arch_data.get("services", [])
 
+    # Check if terraform.tfvars generation is needed
+    needs_tfvars, variables_content = _check_tfvars_needed(tf_files)
+    example_tfvars = _find_example_tfvars(tf_files)
+
+    # Build the prompt
+    tfvars_section = ""
+    tfvars_output = ""
+
+    if needs_tfvars:
+        # Build example hint if available
+        example_section = ""
+        if example_tfvars:
+            example_section = EXAMPLE_TFVARS_HINT.format(example_content=example_tfvars[:3000])
+
+        tfvars_section = TFVARS_PROMPT_SECTION.format(
+            variables_content=variables_content[:5000] if variables_content else "",
+            example_tfvars_section=example_section,
+        )
+        tfvars_output = ',\n  "terraform.tfvars": "..."'
+
     # Generate prompt
     prompt = GENERATION_PROMPT.format(
         terraform_content=tf_content[:15000],  # Limit content size
         services=", ".join(services),
+        tfvars_output=tfvars_output,
     )
+
+    # Add tfvars section to prompt if needed
+    if tfvars_section:
+        # Insert before "## Output Format"
+        prompt = prompt.replace(
+            "## Output Format",
+            tfvars_section + "\n\n## Output Format"
+        )
 
     # Retry loop for API calls
     retries = 0

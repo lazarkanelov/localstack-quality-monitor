@@ -241,13 +241,28 @@ async def _download_terraform_files(
                 # Extract zip archive
                 with zipfile.ZipFile(io.BytesIO(content)) as zf:
                     for name in zf.namelist():
-                        if name.endswith(".tf") and not name.startswith("__"):
+                        # Skip hidden/system files
+                        if name.startswith("__") or "/__" in name:
+                            continue
+
+                        # Capture .tf files
+                        if name.endswith(".tf"):
                             try:
                                 tf_content = zf.read(name).decode("utf-8")
                                 # Remove the top-level directory prefix
                                 clean_name = "/".join(name.split("/")[1:])
                                 if clean_name:
                                     tf_files[clean_name] = tf_content
+                            except Exception:
+                                pass
+
+                        # Capture .tfvars files (especially from examples/)
+                        elif name.endswith(".tfvars") or name.endswith(".tfvars.json"):
+                            try:
+                                tfvars_content = zf.read(name).decode("utf-8")
+                                clean_name = "/".join(name.split("/")[1:])
+                                if clean_name:
+                                    tf_files[clean_name] = tfvars_content
                             except Exception:
                                 pass
 
