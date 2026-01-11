@@ -1,0 +1,21 @@
+{
+  "hash": "d02637494b9688ec",
+  "source_url": "https://github.com/aws-samples/serverless-patterns/tree/main/eventbridge-lambda-terraform",
+  "source_type": "github_repos",
+  "discovered_at": "2026-01-11T08:20:43.824327",
+  "services": [
+    "iam",
+    "lambda",
+    "cloudwatch"
+  ],
+  "resource_count": 6,
+  "name": "aws-samples/serverless-patterns/eventbridge-lambda-terraform",
+  "description": "Serverless patterns. Learn more at the website: https://serverlessland.com/patterns.",
+  "version": "main",
+  "skipped": false,
+  "skip_reason": null,
+  "original_format": null,
+  "terraform_files": {
+    "main.tf": "terraform {\n  required_providers {\n\taws = {\n\t  source  = \"hashicorp/aws\"\n\t  version = \"~> 5.0\"\n\t}\n  }\n\n  required_version = \">= 0.14.9\"\n}\n\nprovider \"aws\" {\n  profile = \"default\"\n  region  = \"us-east-1\"\n}\n\nresource \"aws_lambda_function\" \"lambda_function\" {\n  function_name    = \"ConsumerFunction\"\n  filename         = data.archive_file.lambda_zip_file.output_path\n  source_code_hash = data.archive_file.lambda_zip_file.output_base64sha256\n  handler          = \"app.handler\"\n  role             = aws_iam_role.lambda_iam_role.arn\n  runtime          = \"nodejs24.x\"\n}\n\ndata \"archive_file\" \"lambda_zip_file\" {\n  type        = \"zip\"\n  source_file = \"${path.module}/src/app.js\"\n  output_path = \"${path.module}/lambda.zip\"\n}\n\ndata \"aws_iam_policy\" \"lambda_basic_execution_role_policy\" {\n  name = \"AWSLambdaBasicExecutionRole\"\n}\n\nresource \"aws_iam_role\" \"lambda_iam_role\" {\n  name_prefix         = \"EventBridgeLambdaRole-\"\n\n  assume_role_policy = <<EOF\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n\t{\n\t  \"Action\": \"sts:AssumeRole\",\n\t  \"Principal\": {\n\t\t\"Service\": \"lambda.amazonaws.com\"\n\t  },\n\t  \"Effect\": \"Allow\",\n\t  \"Sid\": \"\"\n\t}\n  ]\n}\nEOF\n}\n\nresource \"aws_iam_role_policy_attachment\" \"lambda_basic_execution\" {\n  role       = aws_iam_role.lambda_iam_role.name\n  policy_arn = data.aws_iam_policy.lambda_basic_execution_role_policy.arn\n}\n\nresource \"aws_cloudwatch_event_rule\" \"event_rule\" {\n\tname_prefix = \"eventbridge-lambda-\"\n  event_pattern = <<EOF\n{\n  \"detail-type\": [\"transaction\"],\n  \"source\": [\"custom.myApp\"],\n  \"detail\": {\n\t\"location\": [{\n\t  \"prefix\": \"EUR-\"\n\t}]\n  }\n}\nEOF\n}\n\nresource \"aws_cloudwatch_event_target\" \"target_lambda_function\" {\n  rule = aws_cloudwatch_event_rule.event_rule.name\n  arn  = aws_lambda_function.lambda_function.arn\n}\n\nresource \"aws_lambda_permission\" \"allow_cloudwatch\" {\n  action        = \"lambda:InvokeFunction\"\n  function_name = aws_lambda_function.lambda_function.function_name\n  principal     = \"events.amazonaws.com\"\n  source_arn    = aws_cloudwatch_event_rule.event_rule.arn\n}\n\noutput \"ConsumerFunction\" {\n  value       = aws_lambda_function.lambda_function.arn\n  description = \"ConsumerFunction function name\"\n}\n"
+  }
+}

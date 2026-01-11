@@ -1,0 +1,21 @@
+{
+  "hash": "62707d3237ff9c70",
+  "source_url": "https://github.com/aws-samples/serverless-patterns/tree/main/dynamodb-streams-lambda-terraform",
+  "source_type": "github_repos",
+  "discovered_at": "2026-01-11T08:20:47.528565",
+  "services": [
+    "iam",
+    "lambda",
+    "dynamodb"
+  ],
+  "resource_count": 5,
+  "name": "aws-samples/serverless-patterns/dynamodb-streams-lambda-terraform",
+  "description": "Serverless patterns. Learn more at the website: https://serverlessland.com/patterns.",
+  "version": "main",
+  "skipped": false,
+  "skip_reason": null,
+  "original_format": null,
+  "terraform_files": {
+    "main.tf": "terraform {\n  required_providers {\n    aws = {\n      source  = \"hashicorp/aws\"\n      version = \"~> 5.0\"\n    }\n  }\n\n  required_version = \">= 0.14.9\"\n}\n\nprovider \"aws\" {\n  profile = \"default\"\n  region  = \"us-east-1\"\n}\n\nresource \"aws_dynamodb_table\" \"dynamodb_table_users\" {\n  name             = \"UsersIds\"\n  billing_mode     = \"PROVISIONED\"\n  read_capacity    = 5\n  write_capacity   = 5\n  stream_enabled   = true\n  stream_view_type = \"NEW_AND_OLD_IMAGES\"\n  hash_key         = \"UserId\"\n\n  attribute {\n    name = \"UserId\"\n    type = \"S\"\n  }\n\n  tags = {\n    Name        = \"dynamodb-test-table\"\n    Environment = \"dev\"\n  }\n}\n\nresource \"aws_lambda_function\" \"lambda_dynamodb_stream_handler\" {\n  function_name    = \"process-usersids-records\"\n  filename         = data.archive_file.lambda_zip_file.output_path\n  source_code_hash = data.archive_file.lambda_zip_file.output_base64sha256\n  handler          = \"index.handler\"\n  role             = aws_iam_role.iam_for_lambda.arn\n  runtime          = \"nodejs24.x\"\n}\n\ndata \"archive_file\" \"lambda_zip_file\" {\n  type        = \"zip\"\n  source_file = \"${path.module}/src/index.js\"\n  output_path = \"${path.module}/lambda.zip\"\n}\n\nresource \"aws_lambda_event_source_mapping\" \"lambda_dynamodb\" {\n  event_source_arn  = aws_dynamodb_table.dynamodb_table_users.stream_arn\n  function_name     = aws_lambda_function.lambda_dynamodb_stream_handler.arn\n  starting_position = \"LATEST\"\n}\n\nresource \"aws_iam_role\" \"iam_for_lambda\" {\n  name = \"iam_for_lambda\"\n\n  assume_role_policy = <<EOF\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": \"sts:AssumeRole\",\n      \"Principal\": {\n        \"Service\": \"lambda.amazonaws.com\"\n      },\n      \"Effect\": \"Allow\",\n      \"Sid\": \"\"\n    }\n  ]\n}\nEOF\n}\n\nresource \"aws_iam_role_policy\" \"dynamodb_lambda_policy\" {\n  name   = \"lambda-dynamodb-policy\"\n  role   = aws_iam_role.iam_for_lambda.id\n  policy = <<EOF\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n        \"Sid\": \"AllowLambdaFunctionToCreateLogs\",\n        \"Action\": [ \n            \"logs:*\" \n        ],\n        \"Effect\": \"Allow\",\n        \"Resource\": [ \n            \"arn:aws:logs:*:*:*\" \n        ]\n    },\n    {\n        \"Sid\": \"AllowLambdaFunctionInvocation\",\n        \"Effect\": \"Allow\",\n        \"Action\": [\n            \"lambda:InvokeFunction\"\n        ],\n        \"Resource\": [\n            \"${aws_dynamodb_table.dynamodb_table_users.arn}/stream/*\"\n        ]\n    },\n    {\n        \"Sid\": \"APIAccessForDynamoDBStreams\",\n        \"Effect\": \"Allow\",\n        \"Action\": [\n            \"dynamodb:GetRecords\",\n            \"dynamodb:GetShardIterator\",\n            \"dynamodb:DescribeStream\",\n            \"dynamodb:ListStreams\"\n        ],\n        \"Resource\": \"${aws_dynamodb_table.dynamodb_table_users.arn}/stream/*\"\n    }\n  ]\n}\nEOF\n}\n\noutput \"dynamodb_usersIds_arn\" {\n  value = aws_dynamodb_table.dynamodb_table_users.arn\n    description = \"The ARN of the DynamoDB Users Ids table\"\n}\n\noutput \"lambda_processing_arn\" {\n  value = aws_lambda_function.lambda_dynamodb_stream_handler.arn\n    description = \"The ARN of the Lambda function processing the DynamoDB stream\"\n}\n"
+  }
+}

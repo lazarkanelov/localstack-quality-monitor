@@ -1,0 +1,23 @@
+{
+  "arch_hash": "simple_s3_test",
+  "run_id": "85b6cfea-755f-4720-a878-80ff9244d9fe",
+  "status": "PASSED",
+  "started_at": "2026-01-11T16:24:00.574823",
+  "completed_at": "2026-01-11T16:24:56.496347",
+  "duration_seconds": 55.921527,
+  "terraform_apply": {
+    "success": true,
+    "resources_created": 1,
+    "outputs": {},
+    "logs": "\nTerraform used the selected providers to generate the following execution\nplan. Resource actions are indicated with the following symbols:\n  \u001b[32m+\u001b[0m create\u001b[0m\n\nTerraform will perform the following actions:\n\n\u001b[1m  # aws_s3_bucket.test_bucket\u001b[0m will be created\n\u001b[0m  \u001b[32m+\u001b[0m\u001b[0m resource \"aws_s3_bucket\" \"test_bucket\" {\n      \u001b[32m+\u001b[0m\u001b[0m acceleration_status         = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m acl                         = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m arn                         = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m bucket                      = \"lsqm-test-bucket-simple\"\n      \u001b[32m+\u001b[0m\u001b[0m bucket_domain_name          = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m bucket_prefix               = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m bucket_regional_domain_name = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m force_destroy               = false\n      \u001b[32m+\u001b[0m\u001b[0m hosted_zone_id              = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m id                          = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m object_lock_enabled         = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m policy                      = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m region                      = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m request_payer               = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m tags_all                    = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m website_domain              = (known after apply)\n      \u001b[32m+\u001b[0m\u001b[0m website_endpoint            = (known after apply)\n    }\n\n\u001b[1mPlan:\u001b[0m 1 to add, 0 to change, 0 to destroy.\n\u001b[0m\nChanges to Outputs:\n  \u001b[32m+\u001b[0m\u001b[0m bucket_name = (known after apply)\n\u001b[0m\u001b[1maws_s3_bucket.test_bucket: Creating...\u001b[0m\u001b[0m\n\u001b[0m\u001b[1maws_s3_bucket.test_bucket: Creation complete after 0s [id=lsqm-test-bucket-simple]\u001b[0m\n\u001b[0m\u001b[1m\u001b[32m\nApply complete! Resources: 1 added, 0 changed, 0 destroyed.\n\u001b[0m\u001b[0m\u001b[1m\u001b[32m\nOutputs:\n\n\u001b[0mbucket_name = \"lsqm-test-bucket-simple\"\n"
+  },
+  "pytest_results": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "output": ""
+  },
+  "container_logs": "",
+  "error_message": null
+}

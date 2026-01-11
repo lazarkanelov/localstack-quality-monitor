@@ -1,0 +1,17 @@
+{
+  "arch_hash": "62707d3237ff9c70",
+  "run_id": "85b6cfea-755f-4720-a878-80ff9244d9fe",
+  "status": "FAILED",
+  "started_at": "2026-01-11T16:25:46.425709",
+  "completed_at": "2026-01-11T16:25:56.862096",
+  "duration_seconds": 10.436389,
+  "terraform_apply": {
+    "success": false,
+    "resources_created": 0,
+    "outputs": {},
+    "logs": "Apply failed:\nSTDOUT: \u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mexpected runtime to be one of [\"nodejs\" \"nodejs4.3\" \"nodejs6.10\" \"nodejs8.10\" \"nodejs10.x\" \"nodejs12.x\" \"nodejs14.x\" \"nodejs16.x\" \"java8\" \"java8.al2\" \"java11\" \"python2.7\" \"python3.6\" \"python3.7\" \"python3.8\" \"python3.9\" \"dotnetcore1.0\" \"dotnetcore2.0\" \"dotnetcore2.1\" \"dotnetcore3.1\" \"dotnet6\" \"dotnet8\" \"nodejs4.3-edge\" \"go1.x\" \"ruby2.5\" \"ruby2.7\" \"provided\" \"provided.al2\" \"nodejs18.x\" \"python3.10\" \"java17\" \"ruby3.2\" \"ruby3.3\" \"ruby3.4\" \"python3.11\" \"nodejs20.x\" \"provided.al2023\" \"python3.12\" \"java21\" \"python3.13\" \"nodejs22.x\"], got nodejs24.x\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with aws_lambda_function.lambda_dynamodb_stream_handler,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on main.tf line 43, in resource \"aws_lambda_function\" \"lambda_dynamodb_stream_handler\":\n\u001b[31m\u2502\u001b[0m \u001b[0m  43:   runtime          = \u001b[4m\"nodejs24.x\"\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m\n::error::Terraform exited with code 1.\n\nSTDERR: "
+  },
+  "pytest_results": null,
+  "container_logs": "\nLocalStack version: 4.12.1.dev56\nLocalStack build date: 2026-01-09\nLocalStack build git hash: 0b2a5d188\n\nReady.\n",
+  "error_message": null
+}

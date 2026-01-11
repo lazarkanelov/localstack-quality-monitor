@@ -1,0 +1,17 @@
+{
+  "arch_hash": "331b83bdbfe63d75",
+  "run_id": "85b6cfea-755f-4720-a878-80ff9244d9fe",
+  "status": "FAILED",
+  "started_at": "2026-01-11T16:25:37.284600",
+  "completed_at": "2026-01-11T16:25:44.723544",
+  "duration_seconds": 7.438946,
+  "terraform_apply": {
+    "success": false,
+    "resources_created": 0,
+    "outputs": {},
+    "logs": "Apply failed:\nSTDOUT: \u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mexpected runtime to be one of [nodejs nodejs4.3 nodejs6.10 nodejs8.10 nodejs10.x nodejs12.x nodejs14.x java8 java8.al2 java11 python2.7 python3.6 python3.7 python3.8 python3.9 dotnetcore1.0 dotnetcore2.0 dotnetcore2.1 dotnetcore3.1 nodejs4.3-edge go1.x ruby2.5 ruby2.7 provided provided.al2], got python3.14\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with aws_lambda_function.app,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on main.tf line 60, in resource \"aws_lambda_function\" \"app\":\n\u001b[31m\u2502\u001b[0m \u001b[0m  60:   runtime = \u001b[4m\"python3.14\"\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m\n::error::Terraform exited with code 1.\n\nSTDERR: "
+  },
+  "pytest_results": null,
+  "container_logs": "\nLocalStack version: 4.12.1.dev56\nLocalStack build date: 2026-01-09\nLocalStack build git hash: 0b2a5d188\n\nReady.\n",
+  "error_message": null
+}
