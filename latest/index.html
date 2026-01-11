@@ -56,7 +56,8 @@
             max-height: 12rem;
             overflow: auto;
             white-space: pre-wrap;
-            word-break: break-word;
+            word-break: break-all;
+            max-width: 100%;
         }
 
         /* Constrain all code blocks within cards */
@@ -64,6 +65,23 @@
         .result-card code {
             max-width: 100%;
             overflow-wrap: break-word;
+            word-break: break-all;
+        }
+
+        /* Prevent any horizontal overflow */
+        body, html {
+            overflow-x: hidden;
+        }
+
+        main, .result-card, .tab-content {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* Force text wrapping on long strings */
+        .break-anywhere {
+            word-break: break-all;
+            overflow-wrap: anywhere;
         }
 
         code[class*="language-"] {
@@ -94,7 +112,7 @@
                 <div>
                     <h1 class="text-2xl font-bold gradient-text">LocalStack Quality Monitor</h1>
                     <p class="text-sm text-slate-400 mt-1">
-                        Run <code class="bg-slate-800 px-2 py-0.5 rounded text-xs">96fc99cc-93b</code>
+                        Run <code class="bg-slate-800 px-2 py-0.5 rounded text-xs">90a5f889-2d6</code>
                         &bull; 2026-01-11
                         &bull; LocalStack <span class="text-blue-400">latest</span>
                         &bull; Duration <span class="text-green-400">0s</span>
@@ -346,31 +364,31 @@
             </div>
 
             <!-- Results Cards -->
-            <div class="space-y-4" id="resultsContainer">
+            <div class="space-y-4 max-w-full overflow-hidden" id="resultsContainer">
                 
-                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden" data-status="failed">
+                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-full" data-status="failed">
                     <!-- Result Header -->
-                    <div class="p-4 border-b border-slate-800">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed">
+                    <div class="p-4 border-b border-slate-800 overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 min-w-0">
+                            <div class="flex-1 min-w-0 overflow-hidden">
+                                <div class="flex items-center space-x-3 min-w-0">
+                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed flex-shrink-0">
                                         FAILED
                                     </span>
-                                    <h3 class="text-lg font-semibold text-white">ViktorUJ/vpc</h3>
+                                    <h3 class="text-lg font-semibold text-white truncate">ViktorUJ/vpc</h3>
                                 </div>
-                                <div class="mt-2 flex items-center space-x-4 text-sm text-slate-400">
-                                    <span title="Architecture Hash">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+                                    <span title="Architecture Hash" class="break-anywhere">
+                                        <svg class="inline w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
                                         </svg>
-                                        5f63fc2a95796608
+                                        <span class="break-all">5f63fc2a95796608...</span>
                                     </span>
                                     <span title="Duration">
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        311.2s
+                                        310.9s
                                     </span>
                                     
                                     <a href="https://registry.terraform.io/modules/ViktorUJ/vpc/aws/1.1.0" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -414,7 +432,7 @@
                             </svg>
                         </summary>
 
-                        <div class="p-4 space-y-6 overflow-hidden">
+                        <div class="p-4 space-y-6 overflow-hidden max-w-full">
                             <!-- For failed architectures: Show diagnostic info FIRST -->
                             
 
@@ -428,7 +446,7 @@
                                     Terraform Output (Error Details)
                                 </h4>
                                 <div class="bg-red-950/30 border border-red-900/50 rounded-lg overflow-hidden">
-                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">Terraform timed out</code></pre>
+                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">Terraform timed out</code></pre>
                                 </div>
                             </div>
                             
@@ -446,52 +464,52 @@
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">43:34.842  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:43:34.847  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:43:44.864  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:43:44.871  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:43:54.887  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:43:54.891  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:04.907  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:04.911  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:14.926  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:14.929  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:24.944  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:24.948  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:34.961  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:34.964  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:44.973  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:44.976  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:54.985  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:44:54.989  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:04.997  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:05.001  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:15.017  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:15.021  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:25.030  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:25.034  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:35.047  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:35.060  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:45.076  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:45.080  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:55.087  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:45:55.091  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:05.106  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:05.110  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:15.113  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:15.117  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:25.125  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:25.129  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:35.142  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:35.145  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:45.153  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:45.156  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:55.164  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:46:55.169  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:47:05.177  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:47:05.181  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:47:15.189  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T15:47:15.193  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">03:59.384  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:03:59.387  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:09.392  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:09.396  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:19.407  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:19.409  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:29.424  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:29.427  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:39.430  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:39.433  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:49.444  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:49.447  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:59.461  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:04:59.465  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:09.467  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:09.470  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:19.477  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:19.479  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:29.486  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:29.489  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:39.499  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:39.502  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:49.506  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:49.509  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:59.512  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:05:59.514  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:09.529  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:09.532  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:19.548  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:19.549  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:29.563  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:29.567  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:39.569  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:39.572  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:49.580  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:49.583  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:59.589  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:06:59.591  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:07:09.606  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:07:09.609  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:07:19.612  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:07:19.615  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:07:29.630  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:07:29.633  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:07:39.641  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:07:39.645  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
 </code></pre>
                                 </div>
                             </details>
@@ -518,9 +536,9 @@
                                             <dt class="text-slate-500">Original Format</dt>
                                             <dd class="text-white">terraform</dd>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div class="col-span-2 overflow-hidden">
                                             <dt class="text-slate-500">Source URL</dt>
-                                            <dd><a href="https://registry.terraform.io/modules/ViktorUJ/vpc/aws/1.1.0" target="_blank" class="text-blue-400 hover:underline break-all">https://registry.terraform.io/modules/ViktorUJ/vpc/aws/1.1.0</a></dd>
+                                            <dd class="overflow-hidden"><a href="https://registry.terraform.io/modules/ViktorUJ/vpc/aws/1.1.0" target="_blank" class="text-blue-400 hover:underline break-all block overflow-hidden">https://registry.terraform.io/modules/ViktorUJ/vpc/aws/1.1.0</a></dd>
                                         </div>
                                     </dl>
                                 </div>
@@ -2778,29 +2796,29 @@ botocore>=1.34.0</code></pre>
                     </details>
                 </div>
                 
-                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden" data-status="failed">
+                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-full" data-status="failed">
                     <!-- Result Header -->
-                    <div class="p-4 border-b border-slate-800">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed">
+                    <div class="p-4 border-b border-slate-800 overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 min-w-0">
+                            <div class="flex-1 min-w-0 overflow-hidden">
+                                <div class="flex items-center space-x-3 min-w-0">
+                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed flex-shrink-0">
                                         FAILED
                                     </span>
-                                    <h3 class="text-lg font-semibold text-white">aws-samples/serverless-patterns/eventbridge-lambda-terraform</h3>
+                                    <h3 class="text-lg font-semibold text-white truncate">aws-samples/serverless-patterns/eventbridge-lambda-terraform</h3>
                                 </div>
-                                <div class="mt-2 flex items-center space-x-4 text-sm text-slate-400">
-                                    <span title="Architecture Hash">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+                                    <span title="Architecture Hash" class="break-anywhere">
+                                        <svg class="inline w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
                                         </svg>
-                                        d02637494b9688ec
+                                        <span class="break-all">d02637494b9688ec...</span>
                                     </span>
                                     <span title="Duration">
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        10.1s
+                                        10.7s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/eventbridge-lambda-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -2842,14 +2860,14 @@ botocore>=1.34.0</code></pre>
 
                     <!-- Failure Analysis (prominently displayed for failed architectures) -->
                     
-                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden">
-                        <div class="space-y-2 overflow-hidden">
+                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden max-w-full">
+                        <div class="space-y-2 overflow-hidden max-w-full">
                             <!-- Error Message - THE KEY INFO -->
-                            <div class="flex items-start space-x-2 overflow-hidden">
+                            <div class="flex items-start space-x-2 overflow-hidden max-w-full min-w-0">
                                 <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
-                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden">expected runtime to be one of ["nodejs" "nodejs4.3" "nodejs6.10" "nodejs8.10" "nodejs10.x" "nodejs12.x" "nodejs14.x" "nodejs16.x" "java8" "java8.al2" "java11" "python2.7" "python3.6" "python3.7" "python3.8" "python3.9" "dotnetcore1.0" "dotnetcore2.0" "dotnetcore2.1" "dotnetcore3.1" "dotnet6" "dotnet</code>
+                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden min-w-0 flex-1">expected runtime to be one of ["nodejs" "nodejs4.3" "nodejs6.10" "nodejs8.10" "nodejs10.x" "nodejs12.x" "nodejs14.x" "nodejs16.x" "java8" "java8.al2" "java11" "python2.7" "python3.6" "python3.7" "python3.8" "python3.9" "dotnetcore1.0" "dotnetcore2.0" "dotnetcore2.1" "dotnetcore3.1" "dotnet6" "dotnet</code>
                             </div>
 
                             <!-- Tags row -->
@@ -2881,7 +2899,7 @@ botocore>=1.34.0</code></pre>
                             </svg>
                         </summary>
 
-                        <div class="p-4 space-y-6 overflow-hidden">
+                        <div class="p-4 space-y-6 overflow-hidden max-w-full">
                             <!-- For failed architectures: Show diagnostic info FIRST -->
                             
 
@@ -2895,7 +2913,7 @@ botocore>=1.34.0</code></pre>
                                     Terraform Output (Error Details)
                                 </h4>
                                 <div class="bg-red-950/30 border border-red-900/50 rounded-lg overflow-hidden">
-                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">Apply failed:
+                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">Apply failed:
 STDOUT: ╷
 │ Error: expected runtime to be one of ["nodejs" "nodejs4.3" "nodejs6.10" "nodejs8.10" "nodejs10.x" "nodejs12.x" "nodejs14.x" "nodejs16.x" "java8" "java8.al2" "java11" "python2.7" "python3.6" "python3.7" "python3.8" "python3.9" "dotnetcore1.0" "dotnetcore2.0" "dotnetcore2.1" "dotnetcore3.1" "dotnet6" "dotnet8" "nodejs4.3-edge" "go1.x" "ruby2.5" "ruby2.7" "provided" "provided.al2" "nodejs18.x" "python3.10" "java17" "ruby3.2" "ruby3.3" "ruby3.4" "python3.11" "nodejs20.x" "provided.al2023" "python3.12" "java21" "python3.13" "nodejs22.x"], got nodejs24.x
 │ 
@@ -2924,7 +2942,7 @@ STDERR: </code></pre>
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">
 LocalStack version: 4.12.1.dev56
 LocalStack build date: 2026-01-09
 LocalStack build git hash: 0b2a5d188
@@ -2956,9 +2974,9 @@ Ready.
                                             <dt class="text-slate-500">Original Format</dt>
                                             <dd class="text-white">terraform</dd>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div class="col-span-2 overflow-hidden">
                                             <dt class="text-slate-500">Source URL</dt>
-                                            <dd><a href="https://github.com/aws-samples/serverless-patterns/tree/main/eventbridge-lambda-terraform" target="_blank" class="text-blue-400 hover:underline break-all">https://github.com/aws-samples/serverless-patterns/tree/main/eventbridge-lambda-terraform</a></dd>
+                                            <dd class="overflow-hidden"><a href="https://github.com/aws-samples/serverless-patterns/tree/main/eventbridge-lambda-terraform" target="_blank" class="text-blue-400 hover:underline break-all block overflow-hidden">https://github.com/aws-samples/serverless-patterns/tree/main/eventbridge-lambda-terraform</a></dd>
                                         </div>
                                     </dl>
                                 </div>
@@ -4171,29 +4189,29 @@ typing-extensions>=4.8.0</code></pre>
                     </details>
                 </div>
                 
-                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden" data-status="failed">
+                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-full" data-status="failed">
                     <!-- Result Header -->
-                    <div class="p-4 border-b border-slate-800">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed">
+                    <div class="p-4 border-b border-slate-800 overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 min-w-0">
+                            <div class="flex-1 min-w-0 overflow-hidden">
+                                <div class="flex items-center space-x-3 min-w-0">
+                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed flex-shrink-0">
                                         FAILED
                                     </span>
-                                    <h3 class="text-lg font-semibold text-white">aws-samples/serverless-patterns/apigw-lambda-dynamodb-terraform</h3>
+                                    <h3 class="text-lg font-semibold text-white truncate">aws-samples/serverless-patterns/apigw-lambda-dynamodb-terraform</h3>
                                 </div>
-                                <div class="mt-2 flex items-center space-x-4 text-sm text-slate-400">
-                                    <span title="Architecture Hash">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+                                    <span title="Architecture Hash" class="break-anywhere">
+                                        <svg class="inline w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
                                         </svg>
-                                        ad03f95fc72b1791
+                                        <span class="break-all">ad03f95fc72b1791...</span>
                                     </span>
                                     <span title="Duration">
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        10.5s
+                                        11.4s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/apigw-lambda-dynamodb-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -4247,14 +4265,14 @@ typing-extensions>=4.8.0</code></pre>
 
                     <!-- Failure Analysis (prominently displayed for failed architectures) -->
                     
-                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden">
-                        <div class="space-y-2 overflow-hidden">
+                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden max-w-full">
+                        <div class="space-y-2 overflow-hidden max-w-full">
                             <!-- Error Message - THE KEY INFO -->
-                            <div class="flex items-start space-x-2 overflow-hidden">
+                            <div class="flex items-start space-x-2 overflow-hidden max-w-full min-w-0">
                                 <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
-                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden">expected runtime to be one of ["nodejs" "nodejs4.3" "nodejs6.10" "nodejs8.10" "nodejs10.x" "nodejs12.x" "nodejs14.x" "nodejs16.x" "java8" "java8.al2" "java11" "python2.7" "python3.6" "python3.7" "python3.8" "python3.9" "dotnetcore1.0" "dotnetcore2.0" "dotnetcore2.1" "dotnetcore3.1" "dotnet6" "dotnet</code>
+                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden min-w-0 flex-1">expected runtime to be one of ["nodejs" "nodejs4.3" "nodejs6.10" "nodejs8.10" "nodejs10.x" "nodejs12.x" "nodejs14.x" "nodejs16.x" "java8" "java8.al2" "java11" "python2.7" "python3.6" "python3.7" "python3.8" "python3.9" "dotnetcore1.0" "dotnetcore2.0" "dotnetcore2.1" "dotnetcore3.1" "dotnet6" "dotnet</code>
                             </div>
 
                             <!-- Tags row -->
@@ -4286,7 +4304,7 @@ typing-extensions>=4.8.0</code></pre>
                             </svg>
                         </summary>
 
-                        <div class="p-4 space-y-6 overflow-hidden">
+                        <div class="p-4 space-y-6 overflow-hidden max-w-full">
                             <!-- For failed architectures: Show diagnostic info FIRST -->
                             
 
@@ -4300,7 +4318,7 @@ typing-extensions>=4.8.0</code></pre>
                                     Terraform Output (Error Details)
                                 </h4>
                                 <div class="bg-red-950/30 border border-red-900/50 rounded-lg overflow-hidden">
-                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">Apply failed:
+                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">Apply failed:
 STDOUT: ╷
 │ Error: expected runtime to be one of ["nodejs" "nodejs4.3" "nodejs6.10" "nodejs8.10" "nodejs10.x" "nodejs12.x" "nodejs14.x" "nodejs16.x" "java8" "java8.al2" "java11" "python2.7" "python3.6" "python3.7" "python3.8" "python3.9" "dotnetcore1.0" "dotnetcore2.0" "dotnetcore2.1" "dotnetcore3.1" "dotnet6" "dotnet8" "nodejs4.3-edge" "go1.x" "ruby2.5" "ruby2.7" "provided" "provided.al2" "nodejs18.x" "python3.10" "java17" "ruby3.2" "ruby3.3" "ruby3.4" "python3.11" "nodejs20.x" "provided.al2023" "python3.12" "java21" "python3.13" "nodejs22.x"], got python3.14
 │ 
@@ -4329,7 +4347,7 @@ STDERR: </code></pre>
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">
 LocalStack version: 4.12.1.dev56
 LocalStack build date: 2026-01-09
 LocalStack build git hash: 0b2a5d188
@@ -4361,9 +4379,9 @@ Ready.
                                             <dt class="text-slate-500">Original Format</dt>
                                             <dd class="text-white">terraform</dd>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div class="col-span-2 overflow-hidden">
                                             <dt class="text-slate-500">Source URL</dt>
-                                            <dd><a href="https://github.com/aws-samples/serverless-patterns/tree/main/apigw-lambda-dynamodb-terraform" target="_blank" class="text-blue-400 hover:underline break-all">https://github.com/aws-samples/serverless-patterns/tree/main/apigw-lambda-dynamodb-terraform</a></dd>
+                                            <dd class="overflow-hidden"><a href="https://github.com/aws-samples/serverless-patterns/tree/main/apigw-lambda-dynamodb-terraform" target="_blank" class="text-blue-400 hover:underline break-all block overflow-hidden">https://github.com/aws-samples/serverless-patterns/tree/main/apigw-lambda-dynamodb-terraform</a></dd>
                                         </div>
                                     </dl>
                                 </div>
@@ -5747,29 +5765,29 @@ botocore==1.34.0</code></pre>
                     </details>
                 </div>
                 
-                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden" data-status="failed">
+                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-full" data-status="failed">
                     <!-- Result Header -->
-                    <div class="p-4 border-b border-slate-800">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed">
+                    <div class="p-4 border-b border-slate-800 overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 min-w-0">
+                            <div class="flex-1 min-w-0 overflow-hidden">
+                                <div class="flex items-center space-x-3 min-w-0">
+                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed flex-shrink-0">
                                         FAILED
                                     </span>
-                                    <h3 class="text-lg font-semibold text-white">aws-samples/serverless-patterns/apigw-http-api-lambda-terraform</h3>
+                                    <h3 class="text-lg font-semibold text-white truncate">aws-samples/serverless-patterns/apigw-http-api-lambda-terraform</h3>
                                 </div>
-                                <div class="mt-2 flex items-center space-x-4 text-sm text-slate-400">
-                                    <span title="Architecture Hash">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+                                    <span title="Architecture Hash" class="break-anywhere">
+                                        <svg class="inline w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
                                         </svg>
-                                        331b83bdbfe63d75
+                                        <span class="break-all">331b83bdbfe63d75...</span>
                                     </span>
                                     <span title="Duration">
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        7.1s
+                                        7.2s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/apigw-http-api-lambda-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -5819,14 +5837,14 @@ botocore==1.34.0</code></pre>
 
                     <!-- Failure Analysis (prominently displayed for failed architectures) -->
                     
-                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden">
-                        <div class="space-y-2 overflow-hidden">
+                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden max-w-full">
+                        <div class="space-y-2 overflow-hidden max-w-full">
                             <!-- Error Message - THE KEY INFO -->
-                            <div class="flex items-start space-x-2 overflow-hidden">
+                            <div class="flex items-start space-x-2 overflow-hidden max-w-full min-w-0">
                                 <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
-                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden">expected runtime to be one of [nodejs nodejs4.3 nodejs6.10 nodejs8.10 nodejs10.x nodejs12.x nodejs14.x java8 java8.al2 java11 python2.7 python3.6 python3.7 python3.8 python3.9 dotnetcore1.0 dotnetcore2.0 dotnetcore2.1 dotnetcore3.1 nodejs4.3-edge go1.x ruby2.5 ruby2.7 provided provided.al2], got pyt</code>
+                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden min-w-0 flex-1">expected runtime to be one of [nodejs nodejs4.3 nodejs6.10 nodejs8.10 nodejs10.x nodejs12.x nodejs14.x java8 java8.al2 java11 python2.7 python3.6 python3.7 python3.8 python3.9 dotnetcore1.0 dotnetcore2.0 dotnetcore2.1 dotnetcore3.1 nodejs4.3-edge go1.x ruby2.5 ruby2.7 provided provided.al2], got pyt</code>
                             </div>
 
                             <!-- Tags row -->
@@ -5858,7 +5876,7 @@ botocore==1.34.0</code></pre>
                             </svg>
                         </summary>
 
-                        <div class="p-4 space-y-6 overflow-hidden">
+                        <div class="p-4 space-y-6 overflow-hidden max-w-full">
                             <!-- For failed architectures: Show diagnostic info FIRST -->
                             
 
@@ -5872,7 +5890,7 @@ botocore==1.34.0</code></pre>
                                     Terraform Output (Error Details)
                                 </h4>
                                 <div class="bg-red-950/30 border border-red-900/50 rounded-lg overflow-hidden">
-                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">Apply failed:
+                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">Apply failed:
 STDOUT: ╷
 │ Error: expected runtime to be one of [nodejs nodejs4.3 nodejs6.10 nodejs8.10 nodejs10.x nodejs12.x nodejs14.x java8 java8.al2 java11 python2.7 python3.6 python3.7 python3.8 python3.9 dotnetcore1.0 dotnetcore2.0 dotnetcore2.1 dotnetcore3.1 nodejs4.3-edge go1.x ruby2.5 ruby2.7 provided provided.al2], got python3.14
 │ 
@@ -5901,7 +5919,7 @@ STDERR: </code></pre>
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">
 LocalStack version: 4.12.1.dev56
 LocalStack build date: 2026-01-09
 LocalStack build git hash: 0b2a5d188
@@ -5933,9 +5951,9 @@ Ready.
                                             <dt class="text-slate-500">Original Format</dt>
                                             <dd class="text-white">terraform</dd>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div class="col-span-2 overflow-hidden">
                                             <dt class="text-slate-500">Source URL</dt>
-                                            <dd><a href="https://github.com/aws-samples/serverless-patterns/tree/main/apigw-http-api-lambda-terraform" target="_blank" class="text-blue-400 hover:underline break-all">https://github.com/aws-samples/serverless-patterns/tree/main/apigw-http-api-lambda-terraform</a></dd>
+                                            <dd class="overflow-hidden"><a href="https://github.com/aws-samples/serverless-patterns/tree/main/apigw-http-api-lambda-terraform" target="_blank" class="text-blue-400 hover:underline break-all block overflow-hidden">https://github.com/aws-samples/serverless-patterns/tree/main/apigw-http-api-lambda-terraform</a></dd>
                                         </div>
                                     </dl>
                                 </div>
@@ -7443,29 +7461,29 @@ typing-extensions>=4.0.0</code></pre>
                     </details>
                 </div>
                 
-                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden" data-status="failed">
+                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-full" data-status="failed">
                     <!-- Result Header -->
-                    <div class="p-4 border-b border-slate-800">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed">
+                    <div class="p-4 border-b border-slate-800 overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 min-w-0">
+                            <div class="flex-1 min-w-0 overflow-hidden">
+                                <div class="flex items-center space-x-3 min-w-0">
+                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed flex-shrink-0">
                                         FAILED
                                     </span>
-                                    <h3 class="text-lg font-semibold text-white">aws-samples/serverless-patterns/dynamodb-streams-lambda-terraform</h3>
+                                    <h3 class="text-lg font-semibold text-white truncate">aws-samples/serverless-patterns/dynamodb-streams-lambda-terraform</h3>
                                 </div>
-                                <div class="mt-2 flex items-center space-x-4 text-sm text-slate-400">
-                                    <span title="Architecture Hash">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+                                    <span title="Architecture Hash" class="break-anywhere">
+                                        <svg class="inline w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
                                         </svg>
-                                        62707d3237ff9c70
+                                        <span class="break-all">62707d3237ff9c70...</span>
                                     </span>
                                     <span title="Duration">
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        10.6s
+                                        9.6s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/dynamodb-streams-lambda-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -7507,14 +7525,14 @@ typing-extensions>=4.0.0</code></pre>
 
                     <!-- Failure Analysis (prominently displayed for failed architectures) -->
                     
-                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden">
-                        <div class="space-y-2 overflow-hidden">
+                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden max-w-full">
+                        <div class="space-y-2 overflow-hidden max-w-full">
                             <!-- Error Message - THE KEY INFO -->
-                            <div class="flex items-start space-x-2 overflow-hidden">
+                            <div class="flex items-start space-x-2 overflow-hidden max-w-full min-w-0">
                                 <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
-                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden">expected runtime to be one of ["nodejs" "nodejs4.3" "nodejs6.10" "nodejs8.10" "nodejs10.x" "nodejs12.x" "nodejs14.x" "nodejs16.x" "java8" "java8.al2" "java11" "python2.7" "python3.6" "python3.7" "python3.8" "python3.9" "dotnetcore1.0" "dotnetcore2.0" "dotnetcore2.1" "dotnetcore3.1" "dotnet6" "dotnet</code>
+                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden min-w-0 flex-1">expected runtime to be one of ["nodejs" "nodejs4.3" "nodejs6.10" "nodejs8.10" "nodejs10.x" "nodejs12.x" "nodejs14.x" "nodejs16.x" "java8" "java8.al2" "java11" "python2.7" "python3.6" "python3.7" "python3.8" "python3.9" "dotnetcore1.0" "dotnetcore2.0" "dotnetcore2.1" "dotnetcore3.1" "dotnet6" "dotnet</code>
                             </div>
 
                             <!-- Tags row -->
@@ -7546,7 +7564,7 @@ typing-extensions>=4.0.0</code></pre>
                             </svg>
                         </summary>
 
-                        <div class="p-4 space-y-6 overflow-hidden">
+                        <div class="p-4 space-y-6 overflow-hidden max-w-full">
                             <!-- For failed architectures: Show diagnostic info FIRST -->
                             
 
@@ -7560,7 +7578,7 @@ typing-extensions>=4.0.0</code></pre>
                                     Terraform Output (Error Details)
                                 </h4>
                                 <div class="bg-red-950/30 border border-red-900/50 rounded-lg overflow-hidden">
-                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">Apply failed:
+                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">Apply failed:
 STDOUT: ╷
 │ Error: expected runtime to be one of ["nodejs" "nodejs4.3" "nodejs6.10" "nodejs8.10" "nodejs10.x" "nodejs12.x" "nodejs14.x" "nodejs16.x" "java8" "java8.al2" "java11" "python2.7" "python3.6" "python3.7" "python3.8" "python3.9" "dotnetcore1.0" "dotnetcore2.0" "dotnetcore2.1" "dotnetcore3.1" "dotnet6" "dotnet8" "nodejs4.3-edge" "go1.x" "ruby2.5" "ruby2.7" "provided" "provided.al2" "nodejs18.x" "python3.10" "java17" "ruby3.2" "ruby3.3" "ruby3.4" "python3.11" "nodejs20.x" "provided.al2023" "python3.12" "java21" "python3.13" "nodejs22.x"], got nodejs24.x
 │ 
@@ -7589,7 +7607,7 @@ STDERR: </code></pre>
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">
 LocalStack version: 4.12.1.dev56
 LocalStack build date: 2026-01-09
 LocalStack build git hash: 0b2a5d188
@@ -7621,9 +7639,9 @@ Ready.
                                             <dt class="text-slate-500">Original Format</dt>
                                             <dd class="text-white">terraform</dd>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div class="col-span-2 overflow-hidden">
                                             <dt class="text-slate-500">Source URL</dt>
-                                            <dd><a href="https://github.com/aws-samples/serverless-patterns/tree/main/dynamodb-streams-lambda-terraform" target="_blank" class="text-blue-400 hover:underline break-all">https://github.com/aws-samples/serverless-patterns/tree/main/dynamodb-streams-lambda-terraform</a></dd>
+                                            <dd class="overflow-hidden"><a href="https://github.com/aws-samples/serverless-patterns/tree/main/dynamodb-streams-lambda-terraform" target="_blank" class="text-blue-400 hover:underline break-all block overflow-hidden">https://github.com/aws-samples/serverless-patterns/tree/main/dynamodb-streams-lambda-terraform</a></dd>
                                         </div>
                                     </dl>
                                 </div>
@@ -8893,29 +8911,29 @@ typing-extensions>=4.0.0</code></pre>
                     </details>
                 </div>
                 
-                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden" data-status="failed">
+                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-full" data-status="failed">
                     <!-- Result Header -->
-                    <div class="p-4 border-b border-slate-800">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed">
+                    <div class="p-4 border-b border-slate-800 overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 min-w-0">
+                            <div class="flex-1 min-w-0 overflow-hidden">
+                                <div class="flex items-center space-x-3 min-w-0">
+                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-failed flex-shrink-0">
                                         FAILED
                                     </span>
-                                    <h3 class="text-lg font-semibold text-white">aws-samples/serverless-patterns/s3-lambda-terraform</h3>
+                                    <h3 class="text-lg font-semibold text-white truncate">aws-samples/serverless-patterns/s3-lambda-terraform</h3>
                                 </div>
-                                <div class="mt-2 flex items-center space-x-4 text-sm text-slate-400">
-                                    <span title="Architecture Hash">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+                                    <span title="Architecture Hash" class="break-anywhere">
+                                        <svg class="inline w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
                                         </svg>
-                                        ced9dfcb174c6a53
+                                        <span class="break-all">ced9dfcb174c6a53...</span>
                                     </span>
                                     <span title="Duration">
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        7.6s
+                                        6.4s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/s3-lambda-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -8957,14 +8975,14 @@ typing-extensions>=4.0.0</code></pre>
 
                     <!-- Failure Analysis (prominently displayed for failed architectures) -->
                     
-                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden">
-                        <div class="space-y-2 overflow-hidden">
+                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden max-w-full">
+                        <div class="space-y-2 overflow-hidden max-w-full">
                             <!-- Error Message - THE KEY INFO -->
-                            <div class="flex items-start space-x-2 overflow-hidden">
+                            <div class="flex items-start space-x-2 overflow-hidden max-w-full min-w-0">
                                 <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
-                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden">Unsupported argument │  │   on localstack_providers_override.tf line 23, in provider "aws": │   23:     bedrock = "http://localhost:5130" │  │ An argument named "bedrock" is not expected here. ╵ ╷ │ Error: Unsupported argument │  │   on localstack_providers_override.tf line 24, in provider "aws": │ </code>
+                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden min-w-0 flex-1">Unsupported argument │  │   on localstack_providers_override.tf line 23, in provider "aws": │   23:     bedrock = "http://localhost:5130" │  │ An argument named "bedrock" is not expected here. ╵ ╷ │ Error: Unsupported argument │  │   on localstack_providers_override.tf line 24, in provider "aws": │ </code>
                             </div>
 
                             <!-- Tags row -->
@@ -8992,7 +9010,7 @@ typing-extensions>=4.0.0</code></pre>
                             </svg>
                         </summary>
 
-                        <div class="p-4 space-y-6 overflow-hidden">
+                        <div class="p-4 space-y-6 overflow-hidden max-w-full">
                             <!-- For failed architectures: Show diagnostic info FIRST -->
                             
 
@@ -9006,7 +9024,7 @@ typing-extensions>=4.0.0</code></pre>
                                     Terraform Output (Error Details)
                                 </h4>
                                 <div class="bg-red-950/30 border border-red-900/50 rounded-lg overflow-hidden">
-                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">Apply failed:
+                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">Apply failed:
 STDOUT: data.archive_file.lambda_zip_file: Reading...
 
 Terraform used the selected providers to generate the following execution
@@ -9149,7 +9167,7 @@ STDERR: </code></pre>
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">
 LocalStack version: 4.12.1.dev56
 LocalStack build date: 2026-01-09
 LocalStack build git hash: 0b2a5d188
@@ -9181,9 +9199,9 @@ Ready.
                                             <dt class="text-slate-500">Original Format</dt>
                                             <dd class="text-white">terraform</dd>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div class="col-span-2 overflow-hidden">
                                             <dt class="text-slate-500">Source URL</dt>
-                                            <dd><a href="https://github.com/aws-samples/serverless-patterns/tree/main/s3-lambda-terraform" target="_blank" class="text-blue-400 hover:underline break-all">https://github.com/aws-samples/serverless-patterns/tree/main/s3-lambda-terraform</a></dd>
+                                            <dd class="overflow-hidden"><a href="https://github.com/aws-samples/serverless-patterns/tree/main/s3-lambda-terraform" target="_blank" class="text-blue-400 hover:underline break-all block overflow-hidden">https://github.com/aws-samples/serverless-patterns/tree/main/s3-lambda-terraform</a></dd>
                                         </div>
                                     </dl>
                                 </div>
@@ -10283,29 +10301,29 @@ botocore==1.34.34</code></pre>
                     </details>
                 </div>
                 
-                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden" data-status="passed">
+                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-full" data-status="passed">
                     <!-- Result Header -->
-                    <div class="p-4 border-b border-slate-800">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-passed">
+                    <div class="p-4 border-b border-slate-800 overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 min-w-0">
+                            <div class="flex-1 min-w-0 overflow-hidden">
+                                <div class="flex items-center space-x-3 min-w-0">
+                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-passed flex-shrink-0">
                                         PASSED
                                     </span>
-                                    <h3 class="text-lg font-semibold text-white">Simple S3 Test</h3>
+                                    <h3 class="text-lg font-semibold text-white truncate">Simple S3 Test</h3>
                                 </div>
-                                <div class="mt-2 flex items-center space-x-4 text-sm text-slate-400">
-                                    <span title="Architecture Hash">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+                                    <span title="Architecture Hash" class="break-anywhere">
+                                        <svg class="inline w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
                                         </svg>
-                                        simple_s3_test
+                                        <span class="break-all">simple_s3_test...</span>
                                     </span>
                                     <span title="Duration">
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        61.3s
+                                        56.9s
                                     </span>
                                     
                                     <a href="local://simple_s3_test" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -10349,7 +10367,7 @@ botocore==1.34.34</code></pre>
                             </svg>
                         </summary>
 
-                        <div class="p-4 space-y-6 overflow-hidden">
+                        <div class="p-4 space-y-6 overflow-hidden max-w-full">
                             <!-- For failed architectures: Show diagnostic info FIRST -->
                             
 
@@ -10372,9 +10390,9 @@ botocore==1.34.34</code></pre>
                                             <dt class="text-slate-500">Original Format</dt>
                                             <dd class="text-white">terraform</dd>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div class="col-span-2 overflow-hidden">
                                             <dt class="text-slate-500">Source URL</dt>
-                                            <dd><a href="local://simple_s3_test" target="_blank" class="text-blue-400 hover:underline break-all">local://simple_s3_test</a></dd>
+                                            <dd class="overflow-hidden"><a href="local://simple_s3_test" target="_blank" class="text-blue-400 hover:underline break-all block overflow-hidden">local://simple_s3_test</a></dd>
                                         </div>
                                     </dl>
                                 </div>
@@ -10778,7 +10796,7 @@ boto3>=1.35
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">
 Terraform used the selected providers to generate the following execution
 plan. Resource actions are indicated with the following symbols:
   + create
@@ -11022,22 +11040,22 @@ bucket_name = "lsqm-test-bucket-simple"
                             
                             <tr class="hover:bg-slate-800/50 transition bg-blue-900/20">
                                 <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">446c711b</code>
+                                    <code class="text-sm text-slate-300">b5aa050f</code>
                                     <span class="ml-2 text-xs text-blue-400">(current)</span>
                                 </td>
                                 <td class="px-4 py-3 text-slate-300">2026-01-10</td>
-                                <td class="px-4 py-3 text-center text-white">2</td>
+                                <td class="px-4 py-3 text-center text-white">1</td>
                                 <td class="px-4 py-3 text-center text-green-400">-</td>
                                 <td class="px-4 py-3 text-right">
-                                    <span class="font-semibold text-yellow-400">
-                                        50%
+                                    <span class="font-semibold text-green-400">
+                                        100%
                                     </span>
                                 </td>
                             </tr>
                             
                             <tr class="hover:bg-slate-800/50 transition ">
                                 <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">6a1dac98</code>
+                                    <code class="text-sm text-slate-300">96fc99cc</code>
                                     
                                 </td>
                                 <td class="px-4 py-3 text-slate-300">2026-01-11</td>
@@ -11053,21 +11071,6 @@ bucket_name = "lsqm-test-bucket-simple"
                             <tr class="hover:bg-slate-800/50 transition ">
                                 <td class="px-4 py-3">
                                     <code class="text-sm text-slate-300">cdcdbff8</code>
-                                    
-                                </td>
-                                <td class="px-4 py-3 text-slate-300">2026-01-10</td>
-                                <td class="px-4 py-3 text-center text-white">1</td>
-                                <td class="px-4 py-3 text-center text-green-400">-</td>
-                                <td class="px-4 py-3 text-right">
-                                    <span class="font-semibold text-green-400">
-                                        100%
-                                    </span>
-                                </td>
-                            </tr>
-                            
-                            <tr class="hover:bg-slate-800/50 transition ">
-                                <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">b5aa050f</code>
                                     
                                 </td>
                                 <td class="px-4 py-3 text-slate-300">2026-01-10</td>
@@ -11127,7 +11130,7 @@ bucket_name = "lsqm-test-bucket-simple"
                             
                             <tr class="hover:bg-slate-800/50 transition ">
                                 <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">96fc99cc</code>
+                                    <code class="text-sm text-slate-300">90a5f889</code>
                                     
                                 </td>
                                 <td class="px-4 py-3 text-slate-300">2026-01-11</td>
@@ -11195,10 +11198,10 @@ bucket_name = "lsqm-test-bucket-simple"
             new Chart(ctx.getContext('2d'), {
                 type: 'line',
                 data: {
-                    labels: ["2026-01-10", "2026-01-11", "2026-01-10", "2026-01-10", "2026-01-10", "2026-01-11", "2026-01-11", "2026-01-11"],
+                    labels: ["2026-01-10", "2026-01-11", "2026-01-10", "2026-01-10", "2026-01-11", "2026-01-11", "2026-01-11"],
                     datasets: [{
                         label: 'Pass Rate %',
-                        data: [50.0, 14.285714285714285, 100.0, 100.0, 50.0, 50.0, 16.666666666666664, 14.285714285714285],
+                        data: [100.0, 14.285714285714285, 100.0, 50.0, 50.0, 16.666666666666664, 14.285714285714285],
                         borderColor: 'rgb(34, 197, 94)',
                         backgroundColor: 'rgba(34, 197, 94, 0.1)',
                         tension: 0.3,
