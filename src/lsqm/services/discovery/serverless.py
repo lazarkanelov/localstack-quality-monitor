@@ -54,8 +54,10 @@ def discover_serverless(
             arch = _process_serverless_example(repo, content, existing_hashes, logger)
             if arch:
                 discovered.append(arch)
-                existing_urls.add(arch.source_url)
-                existing_hashes.add(arch.hash)
+                # Track locally to avoid duplicates within this discovery run
+                # Don't mutate the original sets - let caller handle deduplication
+                existing_urls = existing_urls | {arch.source_url}
+                existing_hashes = existing_hashes | {arch.hash}
 
     except Exception as e:
         if logger:

@@ -67,8 +67,10 @@ def discover_github_orgs(
                     arch = _process_repository_with_retry(repo, existing_hashes, logger)
                     if arch:
                         discovered.append(arch)
-                        existing_urls.add(arch.source_url)
-                        existing_hashes.add(arch.hash)
+                        # Track locally to avoid duplicates within this discovery run
+                        # Don't mutate the original sets - let caller handle deduplication
+                        existing_urls = existing_urls | {arch.source_url}
+                        existing_hashes = existing_hashes | {arch.hash}
 
                 break  # Success, exit retry loop
 

@@ -5,40 +5,18 @@
 github_repos:
   enabled: true
   repositories:
-    # AWS Samples - complete example projects
+    # AWS Samples - complete example projects (standalone Terraform)
     - url: https://github.com/aws-samples/serverless-patterns
       paths:
         - "apigw-lambda-dynamodb-terraform"
         - "s3-lambda-terraform"
-        - "sqs-lambda-terraform"
-        - "sns-sqs-lambda-terraform"
         - "eventbridge-lambda-terraform"
+        - "lambda-destinations-terraform"
+        - "apigw-rest-api-lambda-terraform"
+        - "apigw-http-api-lambda-terraform"
+        - "dynamodb-streams-lambda-terraform"
 
-    # Terraform examples that are standalone
-    - url: https://github.com/terraform-aws-modules/terraform-aws-lambda
-      paths:
-        - "examples/complete"
-
-    - url: https://github.com/terraform-aws-modules/terraform-aws-s3-bucket
-      paths:
-        - "examples/complete"
-        - "examples/notification"
-
-    - url: https://github.com/terraform-aws-modules/terraform-aws-dynamodb-table
-      paths:
-        - "examples/basic"
-        - "examples/global-tables"
-
-    - url: https://github.com/terraform-aws-modules/terraform-aws-sqs
-      paths:
-        - "examples/complete"
-
-    # ViktorUJ VPC (already in your artifacts)
-    - url: https://github.com/ViktorUJ/vpc
-      paths:
-        - "."
-
-# Disable default sources that find non-standalone modules
+# Disable other sources that mostly find non-standalone modules
 terraform_registry: false
 github_orgs: false
 serverless: false
