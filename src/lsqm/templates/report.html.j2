@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LocalStack Quality Monitor - {{ run_date }}</title>
+    <title>LocalStack Quality Report - {{ run_date }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
@@ -13,13 +15,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        slate: {
-                            850: '#172033',
-                            950: '#0d1321'
+                        dark: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617'
                         }
                     }
                 }
@@ -27,67 +37,17 @@
         }
     </script>
     <style>
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-
-        .status-passed { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
-        .status-partial { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-        .status-failed { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
-        .status-timeout { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
-        .status-error { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
-
-        .gradient-text {
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        details summary::-webkit-details-marker { display: none; }
-        details summary { list-style: none; }
-        details[open] .chevron { transform: rotate(180deg); }
-        .chevron { transition: transform 0.2s ease-in-out; }
-
-        pre[class*="language-"], pre {
-            margin: 0 !important;
-            border-radius: 0.5rem !important;
-            max-height: 12rem;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        /* Constrain all code blocks within cards */
-        .result-card pre,
-        .result-card code {
-            max-width: 100%;
-            overflow-wrap: break-word;
-        }
-
-        code[class*="language-"] {
-            font-size: 0.8rem !important;
-        }
-
-        /* Tab visibility - use !important to override any CDN CSS */
+        [x-cloak] { display: none !important; }
+        pre[class*="language-"] { margin: 0 !important; }
+        code[class*="language-"] { font-size: 0.75rem !important; }
         .tab-content { display: none !important; }
         .tab-content.active { display: block !important; }
-        [hidden] { display: none !important; }
-        .tab-btn.active {
-            border-bottom: 2px solid #3b82f6;
-            color: #3b82f6;
-        }
-
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.5); }
-            50% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.8); }
-        }
-        .pulse-success { animation: pulse-glow 2s infinite; }
     </style>
 </head>
-<body class="bg-slate-950 text-gray-100 min-h-screen">
+<body class="bg-dark-950 text-dark-100 min-h-screen" x-data="reportData()">
+
     {% if has_regressions %}
+    <!-- Regression Banner -->
     <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-4 py-3 text-center font-bold shadow-lg">
         <span class="animate-pulse mr-2">&#9888;</span>
         {{ regressions|length }} REGRESSION{{ 's' if regressions|length > 1 else '' }} DETECTED - Previously passing architectures now failing
@@ -95,754 +55,642 @@
     {% endif %}
 
     <!-- Header -->
-    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
+    <header class="bg-dark-900 border-b border-dark-700 sticky top-0 z-40">
+        <div class="px-6 py-4">
+            <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold gradient-text">LocalStack Quality Monitor</h1>
-                    <p class="text-sm text-slate-400 mt-1">
-                        Run <code class="bg-slate-800 px-2 py-0.5 rounded text-xs">{{ run_id[:12] }}</code>
-                        &bull; {{ run_date }}
-                        &bull; LocalStack <span class="text-blue-400">{{ localstack_version }}</span>
-                        &bull; Duration <span class="text-green-400">{{ "%.0f"|format(duration) }}s</span>
+                    <h1 class="text-xl font-semibold text-white">LocalStack Quality Report</h1>
+                    <p class="text-sm text-dark-400 mt-0.5">
+                        Run <span class="font-mono text-xs bg-dark-800 px-1.5 py-0.5 rounded text-dark-300">{{ run_id[:12] }}</span>
+                        · {{ run_date }}
+                        · LocalStack <span class="text-blue-400">{{ localstack_version }}</span>
+                        · Duration <span class="text-green-400">{{ "%.0f"|format(duration) }}s</span>
                     </p>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-xs text-slate-500">v1.0.0</span>
-                    <button onclick="window.print()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded text-sm transition">
-                        Export
+                <div class="flex items-center space-x-3">
+                    <button onclick="window.print()" class="px-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-sm font-medium hover:bg-dark-700 flex items-center space-x-2 text-dark-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Export</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Navigation Tabs -->
-            <nav class="flex space-x-6 mt-4 -mb-px">
-                <button class="tab-btn active px-1 py-2 text-sm font-medium" onclick="showTab('overview')">Overview</button>
-                <button class="tab-btn px-1 py-2 text-sm font-medium text-slate-400 hover:text-white" onclick="showTab('results')">Test Results</button>
-                <button class="tab-btn px-1 py-2 text-sm font-medium text-slate-400 hover:text-white" onclick="showTab('services')">Service Coverage</button>
-                <button class="tab-btn px-1 py-2 text-sm font-medium text-slate-400 hover:text-white" onclick="showTab('history')">Run History</button>
-            </nav>
+            <!-- Metrics Bar -->
+            <div class="flex items-center space-x-8 mt-4 pt-4 border-t border-dark-800">
+                <div class="flex items-center space-x-2">
+                    <div class="w-10 h-10 rounded-lg bg-dark-800 flex items-center justify-center">
+                        <span class="text-lg font-bold text-white">{{ total }}</span>
+                    </div>
+                    <div class="text-sm">
+                        <div class="font-medium text-dark-200">Total</div>
+                        <div class="text-dark-500 text-xs">Architectures</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-10 h-10 rounded-lg bg-green-900/30 border border-green-800/50 flex items-center justify-center">
+                        <span class="text-lg font-bold text-green-400">{{ passed }}</span>
+                    </div>
+                    <div class="text-sm">
+                        <div class="font-medium text-green-400">Passed</div>
+                        <div class="text-dark-500 text-xs">{{ "%.0f"|format(pass_rate) }}% rate</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-10 h-10 rounded-lg bg-red-900/30 border border-red-800/50 flex items-center justify-center">
+                        <span class="text-lg font-bold text-red-400">{{ failed + timeout + error }}</span>
+                    </div>
+                    <div class="text-sm">
+                        <div class="font-medium text-red-400">Failed</div>
+                        <div class="text-dark-500 text-xs">{{ "%.0f"|format(100 - pass_rate) }}% rate</div>
+                    </div>
+                </div>
+                {% if partial > 0 %}
+                <div class="flex items-center space-x-2">
+                    <div class="w-10 h-10 rounded-lg bg-yellow-900/30 border border-yellow-800/50 flex items-center justify-center">
+                        <span class="text-lg font-bold text-yellow-400">{{ partial }}</span>
+                    </div>
+                    <div class="text-sm">
+                        <div class="font-medium text-yellow-400">Partial</div>
+                        <div class="text-dark-500 text-xs">Issues</div>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="flex-1"></div>
+                <!-- Progress Bar -->
+                <div class="w-48">
+                    <div class="flex justify-between text-xs text-dark-400 mb-1">
+                        <span>Pass Rate</span>
+                        <span class="font-medium text-dark-200">{{ "%.0f"|format(pass_rate) }}%</span>
+                    </div>
+                    <div class="h-2 bg-dark-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full" style="width: {{ pass_rate }}%"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
-    <main class="container mx-auto px-4 py-8 max-w-7xl">
-
-        <!-- Overview Tab -->
-        <div id="overview" class="tab-content active">
-            <!-- Key Metrics -->
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-                <div class="bg-slate-900 rounded-xl p-6 border border-slate-800 text-center">
-                    <div class="text-4xl font-bold text-white">{{ total }}</div>
-                    <div class="text-sm text-slate-400 mt-1">Architectures Tested</div>
-                </div>
-                <div class="bg-slate-900 rounded-xl p-6 border border-green-900/50 text-center {% if passed == total and total > 0 %}pulse-success{% endif %}">
-                    <div class="text-4xl font-bold text-green-400">{{ passed }}</div>
-                    <div class="text-sm text-slate-400 mt-1">Fully Compatible</div>
-                </div>
-                <div class="bg-slate-900 rounded-xl p-6 border border-yellow-900/50 text-center">
-                    <div class="text-4xl font-bold text-yellow-400">{{ partial }}</div>
-                    <div class="text-sm text-slate-400 mt-1">Partial Issues</div>
-                </div>
-                <div class="bg-slate-900 rounded-xl p-6 border border-red-900/50 text-center">
-                    <div class="text-4xl font-bold text-red-400">{{ failed + timeout + error }}</div>
-                    <div class="text-sm text-slate-400 mt-1">Blocked</div>
-                </div>
-                <div class="bg-slate-900 rounded-xl p-6 border border-blue-900/50 text-center">
-                    <div class="text-4xl font-bold text-blue-400">{{ "%.0f"|format(pass_rate) }}%</div>
-                    <div class="text-sm text-slate-400 mt-1">Pass Rate</div>
+    <!-- Charts Section -->
+    <div class="px-6 py-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Pass Rate Trend Chart -->
+            <div class="bg-dark-900 border border-dark-700 rounded-xl p-5">
+                <h3 class="text-sm font-medium text-dark-200 mb-4">Pass Rate Trend</h3>
+                <div style="height: 200px;">
+                    <canvas id="trendChart"></canvas>
                 </div>
             </div>
 
-            <!-- Charts Row -->
-            <div class="grid md:grid-cols-2 gap-6 mb-8">
-                <div class="bg-slate-900 rounded-xl p-6 border border-slate-800">
-                    <h2 class="text-lg font-semibold mb-4 text-white">Pass Rate Trend</h2>
-                    <div style="height: 200px; position: relative;">
-                        <canvas id="trendChart"></canvas>
-                    </div>
-                </div>
-                <div class="bg-slate-900 rounded-xl p-6 border border-slate-800">
-                    <h2 class="text-lg font-semibold mb-4 text-white">Test Summary</h2>
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg">
-                            <span class="text-slate-300">Total Tests Run</span>
-                            <span class="text-xl font-bold text-white">{{ total_tests }}</span>
-                        </div>
-                        <div class="flex justify-between items-center p-3 bg-green-900/20 rounded-lg border border-green-800/30">
-                            <span class="text-green-300">Tests Passed</span>
-                            <span class="text-xl font-bold text-green-400">{{ total_tests_passed }}</span>
-                        </div>
-                        <div class="flex justify-between items-center p-3 bg-red-900/20 rounded-lg border border-red-800/30">
-                            <span class="text-red-300">Tests Failed</span>
-                            <span class="text-xl font-bold text-red-400">{{ total_tests_failed }}</span>
-                        </div>
-                        <div class="pt-2 border-t border-slate-700">
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-400">Test Pass Rate</span>
-                                <span class="text-lg font-semibold {% if test_pass_rate >= 80 %}text-green-400{% elif test_pass_rate >= 50 %}text-yellow-400{% else %}text-red-400{% endif %}">
-                                    {{ "%.1f"|format(test_pass_rate) }}%
-                                </span>
-                            </div>
-                            <div class="mt-2 h-2 bg-slate-700 rounded-full overflow-hidden">
-                                <div class="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full transition-all duration-500"
-                                     style="width: {{ test_pass_rate }}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Results Preview -->
-            <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-                <div class="p-4 border-b border-slate-800 flex justify-between items-center">
-                    <h2 class="text-lg font-semibold text-white">Recent Results</h2>
-                    <button onclick="showTab('results')" class="text-sm text-blue-400 hover:text-blue-300">View All &rarr;</button>
-                </div>
-                <div class="divide-y divide-slate-800">
-                    {% for result in results[:5] %}
-                    <div class="p-4 hover:bg-slate-800/50 transition">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <span class="w-3 h-3 rounded-full status-{{ result.status|lower }}"></span>
-                                <div>
-                                    <div class="font-medium text-white">{{ result.name }}</div>
-                                    <div class="text-xs text-slate-500">{{ result.hash[:12] }}</div>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-4">
-                                <div class="flex space-x-1">
-                                    {% for svc in result.services[:4] %}
-                                    <span class="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">{{ svc }}</span>
-                                    {% endfor %}
-                                </div>
-                                <span class="px-2 py-1 text-xs font-semibold text-white rounded status-{{ result.status|lower }}">
-                                    {{ result.status }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
+            <!-- Status Distribution -->
+            <div class="bg-dark-900 border border-dark-700 rounded-xl p-5">
+                <h3 class="text-sm font-medium text-dark-200 mb-4">Status Distribution</h3>
+                <div class="flex items-center justify-center" style="height: 200px;">
+                    <canvas id="statusChart"></canvas>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Test Results Tab -->
-        <div id="results" class="tab-content" style="display:none !important" hidden>
-            <!-- Filter Buttons -->
-            <div class="flex space-x-2 mb-6">
-                <button onclick="filterResults('all')" class="filter-btn active px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition">
-                    All ({{ total }})
-                </button>
-                <button onclick="filterResults('passed')" class="filter-btn px-4 py-2 bg-green-900/30 hover:bg-green-900/50 text-green-400 rounded-lg text-sm transition">
-                    Passed ({{ passed }})
-                </button>
-                <button onclick="filterResults('partial')" class="filter-btn px-4 py-2 bg-yellow-900/30 hover:bg-yellow-900/50 text-yellow-400 rounded-lg text-sm transition">
-                    Partial ({{ partial }})
-                </button>
-                <button onclick="filterResults('failed')" class="filter-btn px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded-lg text-sm transition">
-                    Failed ({{ failed + timeout + error }})
-                </button>
+    <!-- Filters & Search -->
+    <div class="px-6 py-4 bg-dark-900 border-y border-dark-700">
+        <div class="flex items-center space-x-4">
+            <div class="relative flex-1 max-w-md">
+                <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="text" placeholder="Search architectures..." x-model="searchQuery"
+                       class="w-full pl-10 pr-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-sm text-dark-100 placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
             </div>
+            <div class="flex items-center space-x-2">
+                <span class="text-sm text-dark-400">Status:</span>
+                <select x-model="statusFilter" class="bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">All</option>
+                    <option value="passed">Passed</option>
+                    <option value="failed">Failed</option>
+                </select>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="text-sm text-dark-400">Sort:</span>
+                <select x-model="sortBy" class="bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="status">Status</option>
+                    <option value="name">Name</option>
+                    <option value="duration">Duration</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
-            <!-- Results Cards -->
-            <div class="space-y-4" id="resultsContainer">
-                {% for result in results %}
-                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden" data-status="{{ result.status|lower }}">
-                    <!-- Result Header -->
-                    <div class="p-4 border-b border-slate-800">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
+    <!-- Data Table -->
+    <div class="px-6 py-4">
+        <div class="bg-dark-900 rounded-xl border border-dark-700 overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-dark-800 border-b border-dark-700">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">Architecture</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">Services</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">Tests</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">Duration</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-700">
+                    <template x-for="arch in filteredArchitectures" :key="arch.hash">
+                        <tr @click="openDrawer(arch)" class="hover:bg-dark-800/50 cursor-pointer transition-colors">
+                            <td class="px-4 py-4">
+                                <template x-if="arch.status === 'PASSED'">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900/40 text-green-400 border border-green-800/50">
+                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                        Passed
+                                    </span>
+                                </template>
+                                <template x-if="arch.status === 'FAILED'">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900/40 text-red-400 border border-red-800/50">
+                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                        Failed
+                                    </span>
+                                </template>
+                                <template x-if="arch.status === 'TIMEOUT'">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900/40 text-purple-400 border border-purple-800/50">
+                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                                        Timeout
+                                    </span>
+                                </template>
+                                <template x-if="arch.status === 'ERROR'">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700/40 text-gray-400 border border-gray-600/50">
+                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                        Error
+                                    </span>
+                                </template>
+                                <template x-if="arch.status === 'PARTIAL'">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-900/40 text-yellow-400 border border-yellow-800/50">
+                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                        Partial
+                                    </span>
+                                </template>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="text-sm font-medium text-dark-100 truncate max-w-xs" x-text="arch.name"></div>
+                                <div class="text-xs text-dark-500 font-mono" x-text="arch.hash.slice(0,12)"></div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="flex flex-wrap gap-1">
+                                    <template x-for="svc in arch.services.slice(0,3)" :key="svc">
+                                        <span class="px-2 py-0.5 bg-blue-900/30 text-blue-400 border border-blue-800/50 rounded text-xs" x-text="svc"></span>
+                                    </template>
+                                    <span x-show="arch.services.length > 3" class="text-xs text-dark-500" x-text="'+' + (arch.services.length - 3)"></span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="flex items-center space-x-2 text-sm">
+                                    <span class="text-green-400 font-medium" x-text="arch.pytest_passed"></span>
+                                    <span class="text-dark-600">/</span>
+                                    <span class="text-red-400 font-medium" x-text="arch.pytest_failed"></span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-sm text-dark-400" x-text="arch.duration.toFixed(1) + 's'"></td>
+                            <td class="px-4 py-4">
                                 <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-{{ result.status|lower }}">
-                                        {{ result.status }}
-                                    </span>
-                                    <h3 class="text-lg font-semibold text-white">{{ result.name }}</h3>
-                                </div>
-                                <div class="mt-2 flex items-center space-x-4 text-sm text-slate-400">
-                                    <span title="Architecture Hash">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
-                                        </svg>
-                                        {{ result.hash }}
-                                    </span>
-                                    <span title="Duration">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                        {{ "%.1f"|format(result.duration) }}s
-                                    </span>
-                                    {% if result.source_url %}
-                                    <a href="{{ result.source_url }}" target="_blank" class="text-blue-400 hover:text-blue-300">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                                        </svg>
-                                        Source
+                                    <a x-show="arch.arch_artifact_url" :href="arch.arch_artifact_url" target="_blank" @click.stop class="text-purple-400 hover:text-purple-300 transition-colors" title="View Terraform">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M1 0l4.2 2.4v4.8L1 4.8zm6.6 3.8l4.2 2.4v4.8l-4.2-2.4zm-6.6 7l4.2 2.4v4.8L1 15.6zm6.6 3.8l4.2 2.4v4.8l-4.2-2.4z"/></svg>
                                     </a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-sm">
-                                    <span class="text-green-400 font-semibold">{{ result.pytest_passed }}</span>
-                                    <span class="text-slate-500">/</span>
-                                    <span class="text-red-400 font-semibold">{{ result.pytest_failed }}</span>
-                                    <span class="text-slate-500 ml-1">tests</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Services Tags -->
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            {% for svc in result.services %}
-                            <span class="px-2 py-1 text-xs bg-blue-900/30 text-blue-300 rounded border border-blue-800/50">
-                                {{ svc }}
-                            </span>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <!-- Failure Analysis (prominently displayed for failed architectures) -->
-                    {% if result.failure_analysis and result.failure_analysis.error_message %}
-                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden">
-                        <div class="space-y-2 overflow-hidden">
-                            <!-- Error Message - THE KEY INFO -->
-                            <div class="flex items-start space-x-2 overflow-hidden">
-                                <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                </svg>
-                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden">{{ result.failure_analysis.error_message }}</code>
-                            </div>
-
-                            <!-- Tags row -->
-                            <div class="flex items-center space-x-2 text-xs">
-                                {% if result.failure_analysis.affected_service %}
-                                <span class="px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded">
-                                    {{ result.failure_analysis.affected_service }}
-                                </span>
-                                {% endif %}
-                                {% if result.failure_analysis.aws_error_code %}
-                                <span class="px-2 py-0.5 bg-red-500/20 text-red-300 rounded font-mono">
-                                    {{ result.failure_analysis.aws_error_code }}
-                                </span>
-                                {% endif %}
-                                {% if result.failure_analysis.affected_resource %}
-                                <span class="text-slate-400">
-                                    {{ result.failure_analysis.affected_resource }}
-                                </span>
-                                {% endif %}
-                                {% if not result.failure_analysis.is_localstack_issue %}
-                                <span class="px-2 py-0.5 bg-slate-500/20 text-slate-300 rounded">
-                                    Config Issue
-                                </span>
-                                {% endif %}
-                            </div>
-
-                            <!-- LocalStack exception if different from main error -->
-                            {% if result.failure_analysis.localstack_exception %}
-                            <div class="pt-2 border-t border-red-900/50">
-                                <span class="text-xs text-slate-400">LocalStack:</span>
-                                <code class="block text-xs text-orange-300 font-mono mt-1">{{ result.failure_analysis.localstack_exception }}</code>
-                            </div>
-                            {% endif %}
-
-                            {% if result.failure_analysis.not_implemented %}
-                            <div class="pt-2 border-t border-red-900/50">
-                                <span class="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 rounded text-xs">Not Implemented</span>
-                                <code class="block text-xs text-yellow-300 font-mono mt-1">{{ result.failure_analysis.not_implemented }}</code>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Expandable Details -->
-                    <details class="group">
-                        <summary class="px-4 py-3 bg-slate-800/50 hover:bg-slate-800 cursor-pointer flex items-center justify-between transition">
-                            <span class="text-sm font-medium text-slate-300">View Details</span>
-                            <svg class="chevron w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </summary>
-
-                        <div class="p-4 space-y-6 overflow-hidden">
-                            <!-- For failed architectures: Show diagnostic info FIRST -->
-                            {% if result.status in ['FAILED', 'TIMEOUT', 'ERROR'] %}
-
-                            <!-- Terraform Apply Output (shown first for failures) -->
-                            {% if result.terraform_output %}
-                            <div class="overflow-hidden">
-                                <h4 class="text-sm font-semibold text-red-300 mb-2 flex items-center">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                    </svg>
-                                    Terraform Output (Error Details)
-                                </h4>
-                                <div class="bg-red-950/30 border border-red-900/50 rounded-lg overflow-hidden">
-                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">{{ result.terraform_output }}</code></pre>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            <!-- Container Logs (shown first for failures) -->
-                            {% if result.logs %}
-                            <details class="group overflow-hidden">
-                                <summary class="text-sm font-semibold text-slate-300 mb-2 flex items-center cursor-pointer hover:text-slate-200">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-                                    </svg>
-                                    LocalStack Container Logs
-                                    <svg class="ml-2 chevron w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                </summary>
-                                <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">{{ result.logs }}</code></pre>
-                                </div>
-                            </details>
-                            {% endif %}
-
-                            {% endif %}
-
-                            <!-- Source Information -->
-                            {% if result.source_url %}
-                            <div>
-                                <h4 class="text-sm font-semibold text-slate-300 mb-2 flex items-center">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                    </svg>
-                                    Source Information
-                                </h4>
-                                <div class="bg-slate-800 rounded-lg p-4">
-                                    <dl class="grid grid-cols-2 gap-4 text-sm">
-                                        <div>
-                                            <dt class="text-slate-500">Source Type</dt>
-                                            <dd class="text-white">{{ result.source_type or 'terraform_registry' }}</dd>
-                                        </div>
-                                        <div>
-                                            <dt class="text-slate-500">Original Format</dt>
-                                            <dd class="text-white">{{ result.original_format or 'terraform' }}</dd>
-                                        </div>
-                                        <div class="col-span-2">
-                                            <dt class="text-slate-500">Source URL</dt>
-                                            <dd><a href="{{ result.source_url }}" target="_blank" class="text-blue-400 hover:underline break-all">{{ result.source_url }}</a></dd>
-                                        </div>
-                                    </dl>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            <!-- Test Results -->
-                            <div>
-                                <h4 class="text-sm font-semibold text-slate-300 mb-2 flex items-center">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                                    </svg>
-                                    Test Results
-                                </h4>
-                                <div class="bg-slate-800 rounded-lg p-4">
-                                    <div class="grid grid-cols-4 gap-4 mb-4 text-center">
-                                        <div class="p-2 bg-slate-900 rounded">
-                                            <div class="text-2xl font-bold text-white">{{ result.pytest_passed + result.pytest_failed }}</div>
-                                            <div class="text-xs text-slate-500">Total</div>
-                                        </div>
-                                        <div class="p-2 bg-green-900/30 rounded">
-                                            <div class="text-2xl font-bold text-green-400">{{ result.pytest_passed }}</div>
-                                            <div class="text-xs text-slate-500">Passed</div>
-                                        </div>
-                                        <div class="p-2 bg-red-900/30 rounded">
-                                            <div class="text-2xl font-bold text-red-400">{{ result.pytest_failed }}</div>
-                                            <div class="text-xs text-slate-500">Failed</div>
-                                        </div>
-                                        <div class="p-2 bg-slate-900 rounded">
-                                            <div class="text-2xl font-bold {% if result.pytest_passed > 0 and result.pytest_failed == 0 %}text-green-400{% elif result.pytest_failed > 0 %}text-red-400{% else %}text-slate-400{% endif %}">
-                                                {% if result.pytest_passed + result.pytest_failed > 0 %}
-                                                {{ "%.0f"|format(result.pytest_passed / (result.pytest_passed + result.pytest_failed) * 100) }}%
-                                                {% else %}
-                                                N/A
-                                                {% endif %}
-                                            </div>
-                                            <div class="text-xs text-slate-500">Pass Rate</div>
-                                        </div>
-                                    </div>
-
-                                    {% if result.pytest_output %}
-                                    <details class="mt-3">
-                                        <summary class="text-sm text-slate-400 cursor-pointer hover:text-slate-300">
-                                            View Test Output
-                                        </summary>
-                                        <pre class="mt-2 !bg-slate-900 text-xs overflow-auto max-h-48"><code class="language-bash">{{ result.pytest_output }}</code></pre>
-                                    </details>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <!-- Terraform Files (collapsed by default in outer details) -->
-                            {% if result.terraform_files %}
-                            <details class="group">
-                                <summary class="text-sm font-semibold text-slate-300 mb-2 flex items-center cursor-pointer hover:text-slate-200">
-                                    <svg class="w-4 h-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M1 0l4.2 2.4v4.8L1 4.8zm6.6 3.8l4.2 2.4v4.8l-4.2-2.4zm-6.6 7l4.2 2.4v4.8L1 15.6zm6.6 3.8l4.2 2.4v4.8l-4.2-2.4zm6.6-12l4.2 2.4v4.8l-4.2-2.4zm0 10.8l4.2 2.4v4.8l-4.2-2.4z"/>
-                                    </svg>
-                                    Terraform Infrastructure ({{ result.terraform_files|length }} files)
-                                    <svg class="ml-2 chevron w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                    {% if result.arch_artifact_url %}
-                                    <a href="{{ result.arch_artifact_url }}" target="_blank" class="ml-auto text-xs text-purple-400 hover:text-purple-300 flex items-center" onclick="event.stopPropagation();">
-                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                                        </svg>
-                                        View in Artifact Repo
+                                    <a x-show="arch.app_artifact_url" :href="arch.app_artifact_url" target="_blank" @click.stop class="text-green-400 hover:text-green-300 transition-colors" title="View App">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
                                     </a>
-                                    {% endif %}
-                                </summary>
-                                <div class="space-y-2 mt-2">
-                                    {% for filename, content in result.terraform_files.items() %}
-                                    <details class="bg-slate-800 rounded-lg overflow-hidden">
-                                        <summary class="px-3 py-2 bg-slate-700 text-xs text-slate-300 font-mono flex items-center cursor-pointer hover:bg-slate-600 transition">
-                                            <svg class="w-4 h-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M1 0l4.2 2.4v4.8L1 4.8zm6.6 3.8l4.2 2.4v4.8l-4.2-2.4z"/>
-                                            </svg>
-                                            {{ filename }}
-                                            <svg class="ml-auto chevron w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                            </svg>
-                                        </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">{{ content }}</code></pre>
-                                    </details>
-                                    {% endfor %}
                                 </div>
-                            </details>
-                            {% endif %}
-
-                            <!-- Generated Test Application (collapsed by default in outer details) -->
-                            {% if result.app_files %}
-                            <details class="group">
-                                <summary class="text-sm font-semibold text-slate-300 mb-2 flex items-center cursor-pointer hover:text-slate-200">
-                                    <svg class="w-4 h-4 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
-                                    </svg>
-                                    Generated Test Application ({{ result.app_files|length }} files)
-                                    <svg class="ml-2 chevron w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                    {% if result.app_artifact_url %}
-                                    <a href="{{ result.app_artifact_url }}" target="_blank" class="ml-auto text-xs text-green-400 hover:text-green-300 flex items-center" onclick="event.stopPropagation();">
-                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                                        </svg>
-                                        View in Artifact Repo
-                                    </a>
-                                    {% endif %}
-                                </summary>
-
-                                <!-- Test Coverage Features -->
-                                {% if result.test_features %}
-                                <div class="mb-3 mt-2">
-                                    <span class="text-xs text-slate-500 mr-2">Test Coverage:</span>
-                                    {% for feature in result.test_features %}
-                                    <span class="px-2 py-1 text-xs bg-purple-900/30 text-purple-300 rounded border border-purple-800/50 mr-1">
-                                        {{ feature }}
-                                    </span>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-
-                                <div class="space-y-2 mt-2">
-                                    {% for filename, content in result.app_files.items() %}
-                                    <details class="bg-slate-800 rounded-lg overflow-hidden">
-                                        <summary class="px-3 py-2 bg-slate-700 text-xs text-slate-300 font-mono flex items-center cursor-pointer hover:bg-slate-600 transition">
-                                            <svg class="w-4 h-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M14.25 2.26l.756-.005C17.77 2.24 18 2.308 18 3.11V4h-4V2.26zM20 8v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2h6.25v4H20v2z"/>
-                                            </svg>
-                                            {{ filename }}
-                                            <svg class="ml-auto chevron w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                            </svg>
-                                        </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">{{ content }}</code></pre>
-                                    </details>
-                                    {% endfor %}
-                                </div>
-                            </details>
-                            {% endif %}
-
-                            <!-- Use Cases Tested -->
-                            {% if result.test_cases %}
-                            <details class="group">
-                                <summary class="text-sm font-semibold text-slate-300 mb-2 flex items-center cursor-pointer hover:text-slate-200">
-                                    <svg class="w-4 h-4 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                    Use Cases Tested ({{ result.test_cases|length }})
-                                    <svg class="ml-2 chevron w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                </summary>
-                                <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <div class="divide-y divide-slate-700">
-                                        {% for tc in result.test_cases %}
-                                        <div class="p-3 hover:bg-slate-700/50 transition">
-                                            <div class="flex items-start">
-                                                <svg class="w-5 h-5 mr-2 mt-0.5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                                </svg>
-                                                <div>
-                                                    <div class="font-medium text-white text-sm">{{ tc.readable_name }}</div>
-                                                    {% if tc.description %}
-                                                    <div class="text-xs text-slate-400 mt-1">{{ tc.description }}</div>
-                                                    {% endif %}
-                                                    <code class="text-xs text-slate-500 mt-1 block">{{ tc.name }}()</code>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </details>
-                            {% endif %}
-
-                            <!-- For passed architectures: Show logs at the bottom (collapsed) -->
-                            {% if result.status not in ['FAILED', 'TIMEOUT', 'ERROR'] %}
-
-                            <!-- Terraform Apply Output -->
-                            {% if result.terraform_output %}
-                            <details class="group overflow-hidden">
-                                <summary class="text-sm font-semibold text-slate-300 mb-2 flex items-center cursor-pointer hover:text-slate-200">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                    </svg>
-                                    Terraform Apply Output
-                                    <svg class="ml-2 chevron w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                </summary>
-                                <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">{{ result.terraform_output }}</code></pre>
-                                </div>
-                            </details>
-                            {% endif %}
-
-                            <!-- Container Logs -->
-                            {% if result.logs %}
-                            <details class="group overflow-hidden">
-                                <summary class="text-sm font-semibold text-slate-300 mb-2 flex items-center cursor-pointer hover:text-slate-200">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-                                    </svg>
-                                    LocalStack Container Logs
-                                    <svg class="ml-2 chevron w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                </summary>
-                                <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">{{ result.logs }}</code></pre>
-                                </div>
-                            </details>
-                            {% endif %}
-
-                            {% endif %}
-                        </div>
-                    </details>
-                </div>
-                {% endfor %}
-            </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
         </div>
+    </div>
 
-        <!-- Services Tab -->
-        <div id="services" class="tab-content" style="display:none !important" hidden>
-            <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-                <div class="p-4 border-b border-slate-800">
-                    <h2 class="text-lg font-semibold text-white">Service Compatibility Matrix</h2>
-                    <p class="text-sm text-slate-400 mt-1">Pass rates per AWS service across all tested architectures</p>
+    <!-- Service Coverage -->
+    <div class="px-6 py-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Service Coverage</h2>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {% for svc in service_stats %}
+            <div class="bg-dark-900 rounded-xl border border-dark-700 p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="font-medium text-dark-200">{{ svc.name }}</span>
+                    <span class="font-bold text-lg {% if svc.pass_rate >= 70 %}text-green-400{% elif svc.pass_rate >= 40 %}text-yellow-400{% else %}text-red-400{% endif %}">{{ "%.0f"|format(svc.pass_rate) }}%</span>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-slate-800">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Service</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Coverage</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase">Passed</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase">Failed</th>
-                                <th class="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Pass Rate</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-800">
-                            {% for svc in service_stats %}
-                            <tr class="hover:bg-slate-800/50 transition">
-                                <td class="px-4 py-3">
-                                    <span class="font-medium text-white">{{ svc.name }}</span>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="w-full bg-slate-700 rounded-full h-2">
-                                        <div class="h-2 rounded-full transition-all duration-500
-                                            {% if svc.pass_rate >= 80 %}bg-green-500{% elif svc.pass_rate >= 50 %}bg-yellow-500{% else %}bg-red-500{% endif %}"
-                                             style="width: {{ svc.pass_rate }}%"></div>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 text-center text-green-400">{{ svc.passed }}</td>
-                                <td class="px-4 py-3 text-center text-red-400">{{ svc.failed }}</td>
-                                <td class="px-4 py-3 text-right">
-                                    <span class="font-semibold {% if svc.pass_rate >= 80 %}text-green-400{% elif svc.pass_rate >= 50 %}text-yellow-400{% else %}text-red-400{% endif %}">
-                                        {{ "%.0f"|format(svc.pass_rate) }}%
-                                    </span>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="5" class="px-4 py-8 text-center text-slate-500">
-                                    No service data available yet
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="h-2 bg-dark-700 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-500 {% if svc.pass_rate >= 70 %}bg-gradient-to-r from-green-500 to-green-400{% elif svc.pass_rate >= 40 %}bg-gradient-to-r from-yellow-500 to-yellow-400{% else %}bg-gradient-to-r from-red-500 to-red-400{% endif %}" style="width: {{ svc.pass_rate }}%"></div>
+                </div>
+                <div class="flex justify-between mt-2 text-xs text-dark-500">
+                    <span>{{ svc.passed }} passed</span>
+                    <span>{{ svc.failed }} failed</span>
                 </div>
             </div>
+            {% else %}
+            <div class="col-span-5 text-center text-dark-500 py-8">No service data available</div>
+            {% endfor %}
         </div>
+    </div>
 
-        <!-- History Tab -->
-        <div id="history" class="tab-content" style="display:none !important" hidden>
-            <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-                <div class="p-4 border-b border-slate-800">
-                    <h2 class="text-lg font-semibold text-white">Run History</h2>
-                    <p class="text-sm text-slate-400 mt-1">Previous validation runs</p>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-slate-800">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Run ID</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Date</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase">Total</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase">Passed</th>
-                                <th class="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Pass Rate</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-800">
-                            {% for run in run_history %}
-                            <tr class="hover:bg-slate-800/50 transition {% if loop.first %}bg-blue-900/20{% endif %}">
-                                <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">{{ run.run_id }}</code>
-                                    {% if loop.first %}<span class="ml-2 text-xs text-blue-400">(current)</span>{% endif %}
-                                </td>
-                                <td class="px-4 py-3 text-slate-300">{{ run.date }}</td>
-                                <td class="px-4 py-3 text-center text-white">{{ run.total }}</td>
-                                <td class="px-4 py-3 text-center text-green-400">{{ run.passed or '-' }}</td>
-                                <td class="px-4 py-3 text-right">
-                                    <span class="font-semibold {% if run.pass_rate >= 80 %}text-green-400{% elif run.pass_rate >= 50 %}text-yellow-400{% else %}text-red-400{% endif %}">
-                                        {{ "%.0f"|format(run.pass_rate) }}%
-                                    </span>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="5" class="px-4 py-8 text-center text-slate-500">
-                                    No run history available
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+    <!-- Run History -->
+    {% if run_history %}
+    <div class="px-6 py-6 pb-12">
+        <h2 class="text-lg font-semibold text-white mb-4">Run History</h2>
+        <div class="bg-dark-900 rounded-xl border border-dark-700 overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-dark-800 border-b border-dark-700">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Run ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Date</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-dark-400 uppercase">Total</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-dark-400 uppercase">Passed</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-dark-400 uppercase">Pass Rate</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-700">
+                    {% for run in run_history %}
+                    <tr class="{% if loop.last %}bg-blue-900/10{% endif %} hover:bg-dark-800/50 transition-colors">
+                        <td class="px-4 py-3">
+                            <code class="text-sm text-dark-300">{{ run.run_id }}</code>
+                            {% if loop.last %}<span class="ml-2 text-xs text-blue-400">(current)</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-dark-300 text-sm">{{ run.date }}</td>
+                        <td class="px-4 py-3 text-center text-white font-medium">{{ run.total }}</td>
+                        <td class="px-4 py-3 text-center text-green-400 font-medium">{{ run.passed|default('-') }}</td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="font-semibold {% if run.pass_rate >= 70 %}text-green-400{% elif run.pass_rate >= 40 %}text-yellow-400{% else %}text-red-400{% endif %}">{{ "%.0f"|format(run.pass_rate) }}%</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </main>
+    </div>
+    {% endif %}
 
     <!-- Footer -->
-    <footer class="border-t border-slate-800 mt-12">
-        <div class="container mx-auto px-4 py-6 max-w-7xl text-center text-slate-500 text-sm">
-            <p>Generated by LocalStack Quality Monitor &bull; {{ run_date }}</p>
+    <footer class="border-t border-dark-800 mt-8">
+        <div class="px-6 py-6 text-center text-dark-500 text-sm">
+            <p>Generated by LocalStack Quality Monitor · {{ run_date }}</p>
             <p class="mt-1">
                 <a href="https://localstack.cloud" target="_blank" class="text-blue-400 hover:text-blue-300">LocalStack</a>
-                &bull;
+                ·
                 <a href="https://github.com/localstack/localstack" target="_blank" class="text-blue-400 hover:text-blue-300">GitHub</a>
             </p>
         </div>
     </footer>
 
+    <!-- Slide-in Drawer -->
+    <div x-show="drawerOpen" x-cloak class="fixed inset-0 z-50 overflow-hidden" @keydown.escape.window="drawerOpen = false">
+        <!-- Backdrop -->
+        <div x-show="drawerOpen" x-transition:enter="transition-opacity ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+             class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="drawerOpen = false"></div>
+
+        <!-- Drawer Panel -->
+        <div class="absolute inset-y-0 right-0 max-w-2xl w-full flex">
+            <div x-show="drawerOpen" x-transition:enter="transform transition ease-out duration-300" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+                 x-transition:leave="transform transition ease-in duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+                 class="w-full bg-dark-900 border-l border-dark-700 shadow-2xl overflow-y-auto">
+
+                <template x-if="selectedArch">
+                    <div>
+                        <!-- Drawer Header -->
+                        <div class="sticky top-0 bg-dark-900 border-b border-dark-700 px-6 py-4 flex items-center justify-between z-10">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center space-x-2">
+                                    <template x-if="selectedArch.status === 'PASSED'">
+                                        <span class="w-3 h-3 rounded-full bg-green-500 flex-shrink-0"></span>
+                                    </template>
+                                    <template x-if="selectedArch.status === 'FAILED'">
+                                        <span class="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></span>
+                                    </template>
+                                    <template x-if="selectedArch.status === 'TIMEOUT'">
+                                        <span class="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0"></span>
+                                    </template>
+                                    <template x-if="selectedArch.status === 'ERROR'">
+                                        <span class="w-3 h-3 rounded-full bg-gray-500 flex-shrink-0"></span>
+                                    </template>
+                                    <template x-if="selectedArch.status === 'PARTIAL'">
+                                        <span class="w-3 h-3 rounded-full bg-yellow-500 flex-shrink-0"></span>
+                                    </template>
+                                    <h2 class="text-lg font-semibold text-white truncate" x-text="selectedArch.name"></h2>
+                                </div>
+                                <p class="text-sm text-dark-400 font-mono truncate" x-text="selectedArch.hash"></p>
+                            </div>
+                            <button @click="drawerOpen = false" class="p-2 hover:bg-dark-800 rounded-lg transition-colors flex-shrink-0 ml-4">
+                                <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Drawer Content -->
+                        <div class="px-6 py-4 space-y-6">
+                            <!-- Quick Actions -->
+                            <div class="flex space-x-3" x-show="selectedArch.arch_artifact_url || selectedArch.app_artifact_url">
+                                <a x-show="selectedArch.arch_artifact_url" :href="selectedArch.arch_artifact_url" target="_blank" class="flex-1 px-4 py-3 bg-purple-900/30 border border-purple-800/50 text-purple-400 rounded-lg text-sm font-medium text-center hover:bg-purple-900/50 transition-colors flex items-center justify-center space-x-2">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                    <span>View Terraform Repo</span>
+                                </a>
+                                <a x-show="selectedArch.app_artifact_url" :href="selectedArch.app_artifact_url" target="_blank" class="flex-1 px-4 py-3 bg-green-900/30 border border-green-800/50 text-green-400 rounded-lg text-sm font-medium text-center hover:bg-green-900/50 transition-colors flex items-center justify-center space-x-2">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                    <span>View App Repo</span>
+                                </a>
+                            </div>
+
+                            <!-- Services -->
+                            <div x-show="selectedArch.services && selectedArch.services.length > 0">
+                                <h3 class="text-sm font-medium text-dark-300 mb-3">Services</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="svc in selectedArch.services" :key="svc">
+                                        <span class="px-3 py-1.5 bg-blue-900/30 text-blue-400 border border-blue-800/50 rounded-lg text-sm" x-text="svc"></span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Failure Analysis -->
+                            <template x-if="selectedArch.failure_analysis && selectedArch.failure_analysis.error_message">
+                                <div class="bg-red-950/30 border border-red-900/50 rounded-xl p-4">
+                                    <h3 class="text-sm font-medium text-red-400 mb-2 flex items-center">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        Failure Analysis
+                                    </h3>
+                                    <p class="text-sm text-red-300 font-mono bg-dark-950/50 p-3 rounded-lg break-words" x-text="selectedArch.failure_analysis.error_message"></p>
+                                    <div class="flex flex-wrap gap-2 mt-3">
+                                        <span x-show="selectedArch.failure_analysis.affected_service" class="px-2 py-1 bg-purple-900/30 text-purple-400 border border-purple-800/50 rounded text-xs" x-text="selectedArch.failure_analysis.affected_service"></span>
+                                        <span x-show="selectedArch.failure_analysis.aws_error_code" class="px-2 py-1 bg-red-900/30 text-red-400 border border-red-800/50 rounded text-xs font-mono" x-text="selectedArch.failure_analysis.aws_error_code"></span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Steps to Reproduce (for failed architectures) -->
+                            <template x-if="selectedArch.status !== 'PASSED'">
+                                <div class="bg-dark-800 rounded-xl p-4 border border-dark-700">
+                                    <h3 class="text-sm font-medium text-dark-200 mb-3 flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                                        Steps to Reproduce
+                                    </h3>
+                                    <ol class="text-sm text-dark-300 space-y-2 list-decimal list-inside">
+                                        <li>Clone the architecture repository:
+                                            <template x-if="selectedArch.arch_artifact_url">
+                                                <pre class="mt-1 bg-dark-950 text-dark-300 p-2 rounded text-xs overflow-x-auto"><code x-text="'git clone ' + selectedArch.arch_artifact_url.replace('/tree/main/', '.git\ncd ') + '/' + selectedArch.hash"></code></pre>
+                                            </template>
+                                            <template x-if="!selectedArch.arch_artifact_url && selectedArch.source_url">
+                                                <pre class="mt-1 bg-dark-950 text-dark-300 p-2 rounded text-xs overflow-x-auto"><code x-text="'# Source: ' + selectedArch.source_url"></code></pre>
+                                            </template>
+                                        </li>
+                                        <li>Start LocalStack:
+                                            <pre class="mt-1 bg-dark-950 text-dark-300 p-2 rounded text-xs overflow-x-auto"><code>localstack start -d</code></pre>
+                                        </li>
+                                        <li>Initialize and apply Terraform:
+                                            <pre class="mt-1 bg-dark-950 text-dark-300 p-2 rounded text-xs overflow-x-auto"><code>tflocal init
+tflocal apply -auto-approve</code></pre>
+                                        </li>
+                                        <template x-if="selectedArch.app_artifact_url">
+                                            <li>Run the test application:
+                                                <pre class="mt-1 bg-dark-950 text-dark-300 p-2 rounded text-xs overflow-x-auto"><code>cd ../apps/<span x-text="selectedArch.hash"></span>
+pip install -r requirements.txt
+pytest -v</code></pre>
+                                            </li>
+                                        </template>
+                                    </ol>
+                                </div>
+                            </template>
+
+                            <!-- Test Results -->
+                            <div class="bg-dark-800 rounded-xl p-4">
+                                <h3 class="text-sm font-medium text-dark-300 mb-3">Test Results</h3>
+                                <div class="grid grid-cols-4 gap-3 text-center">
+                                    <div class="bg-dark-900 rounded-lg p-3 border border-dark-700">
+                                        <div class="text-2xl font-bold text-white" x-text="selectedArch.pytest_passed + selectedArch.pytest_failed"></div>
+                                        <div class="text-xs text-dark-500">Total</div>
+                                    </div>
+                                    <div class="bg-green-900/20 rounded-lg p-3 border border-green-800/30">
+                                        <div class="text-2xl font-bold text-green-400" x-text="selectedArch.pytest_passed"></div>
+                                        <div class="text-xs text-dark-500">Passed</div>
+                                    </div>
+                                    <div class="bg-red-900/20 rounded-lg p-3 border border-red-800/30">
+                                        <div class="text-2xl font-bold text-red-400" x-text="selectedArch.pytest_failed"></div>
+                                        <div class="text-xs text-dark-500">Failed</div>
+                                    </div>
+                                    <div class="bg-dark-900 rounded-lg p-3 border border-dark-700">
+                                        <div class="text-2xl font-bold" :class="selectedArch.pytest_failed === 0 ? 'text-green-400' : 'text-red-400'" x-text="selectedArch.pytest_passed + selectedArch.pytest_failed > 0 ? Math.round(selectedArch.pytest_passed / (selectedArch.pytest_passed + selectedArch.pytest_failed) * 100) + '%' : 'N/A'"></div>
+                                        <div class="text-xs text-dark-500">Pass Rate</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Pytest Output -->
+                            <div x-data="{ open: false }" x-show="selectedArch.pytest_output && selectedArch.pytest_output.length > 0">
+                                <button @click="open = !open" class="w-full flex items-center justify-between text-left py-2">
+                                    <h3 class="text-sm font-medium text-dark-300 flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        Pytest Output
+                                    </h3>
+                                    <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 text-dark-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <div x-show="open" x-collapse class="mt-3">
+                                    <pre class="bg-dark-950 text-dark-300 p-3 rounded-lg text-xs overflow-x-auto border border-dark-700 whitespace-pre-wrap break-words max-h-96 overflow-y-auto"><code x-text="selectedArch.pytest_output"></code></pre>
+                                </div>
+                            </div>
+
+                            <!-- Terraform Files -->
+                            <div x-data="{ open: false }" x-show="selectedArch.terraform_files && Object.keys(selectedArch.terraform_files).length > 0">
+                                <button @click="open = !open" class="w-full flex items-center justify-between text-left py-2">
+                                    <h3 class="text-sm font-medium text-dark-300 flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 24 24"><path d="M1 0l4.2 2.4v4.8L1 4.8zm6.6 3.8l4.2 2.4v4.8l-4.2-2.4zm-6.6 7l4.2 2.4v4.8L1 15.6zm6.6 3.8l4.2 2.4v4.8l-4.2-2.4z"/></svg>
+                                        Terraform Files
+                                        <span class="ml-2 text-dark-500 font-normal" x-text="'(' + Object.keys(selectedArch.terraform_files).length + ')'"></span>
+                                    </h3>
+                                    <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 text-dark-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <div x-show="open" x-collapse class="mt-3 space-y-3">
+                                    <template x-for="(content, filename) in selectedArch.terraform_files" :key="filename">
+                                        <div class="bg-dark-950 rounded-lg overflow-hidden border border-dark-700">
+                                            <div class="px-3 py-2 bg-dark-800 text-dark-300 text-xs font-mono border-b border-dark-700" x-text="filename"></div>
+                                            <pre class="p-3 text-sm overflow-x-auto max-h-96 overflow-y-auto"><code class="language-hcl" x-text="content"></code></pre>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- App Files -->
+                            <div x-data="{ open: false }" x-show="selectedArch.app_files && Object.keys(selectedArch.app_files).length > 0">
+                                <button @click="open = !open" class="w-full flex items-center justify-between text-left py-2">
+                                    <h3 class="text-sm font-medium text-dark-300 flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                                        Test Application
+                                        <span class="ml-2 text-dark-500 font-normal" x-text="'(' + Object.keys(selectedArch.app_files).length + ')'"></span>
+                                    </h3>
+                                    <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 text-dark-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <div x-show="open" x-collapse class="mt-3 space-y-3">
+                                    <template x-for="(content, filename) in selectedArch.app_files" :key="filename">
+                                        <div class="bg-dark-950 rounded-lg overflow-hidden border border-dark-700">
+                                            <div class="px-3 py-2 bg-dark-800 text-dark-300 text-xs font-mono border-b border-dark-700" x-text="filename"></div>
+                                            <pre class="p-3 text-sm overflow-x-auto max-h-96 overflow-y-auto"><code class="language-python" x-text="content"></code></pre>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Logs -->
+                            <div x-data="{ open: false }" x-show="selectedArch.terraform_output || selectedArch.logs">
+                                <button @click="open = !open" class="w-full flex items-center justify-between text-left py-2">
+                                    <h3 class="text-sm font-medium text-dark-300 flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                                        Logs &amp; Output
+                                    </h3>
+                                    <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 text-dark-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <div x-show="open" x-collapse class="mt-3 space-y-3">
+                                    <div x-show="selectedArch.terraform_output">
+                                        <div class="text-xs font-medium text-dark-500 mb-1">Terraform Output</div>
+                                        <pre class="bg-dark-950 text-dark-300 p-3 rounded-lg text-xs overflow-x-auto max-h-96 overflow-y-auto border border-dark-700 whitespace-pre-wrap break-words"><code x-text="selectedArch.terraform_output"></code></pre>
+                                    </div>
+                                    <div x-show="selectedArch.logs">
+                                        <div class="text-xs font-medium text-dark-500 mb-1">Container Logs</div>
+                                        <pre class="bg-dark-950 text-dark-300 p-3 rounded-lg text-xs overflow-x-auto max-h-96 overflow-y-auto border border-dark-700 whitespace-pre-wrap break-words"><code x-text="selectedArch.logs"></code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Tab switching
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => {
-                el.classList.remove('active');
-                el.style.setProperty('display', 'none', 'important');
-                el.setAttribute('hidden', '');
-            });
-            document.querySelectorAll('.tab-btn').forEach(el => {
-                el.classList.remove('active');
-                el.classList.add('text-slate-400');
-            });
-
-            const activeTab = document.getElementById(tabId);
-            activeTab.classList.add('active');
-            activeTab.style.setProperty('display', 'block', 'important');
-            activeTab.removeAttribute('hidden');
-            event.target.classList.add('active');
-            event.target.classList.remove('text-slate-400');
-        }
-
-        // Result filtering
-        function filterResults(status) {
-            document.querySelectorAll('.result-card').forEach(card => {
-                if (status === 'all' || card.dataset.status === status) {
-                    card.style.display = 'block';
-                } else if (status === 'failed' && ['failed', 'timeout', 'error'].includes(card.dataset.status)) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-        }
-
-        // Trend chart
-        const ctx = document.getElementById('trendChart');
-        if (ctx) {
-            new Chart(ctx.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: [{% for run in run_history %}"{{ run.date }}"{% if not loop.last %}, {% endif %}{% endfor %}],
-                    datasets: [{
-                        label: 'Pass Rate %',
-                        data: [{% for run in run_history %}{{ run.pass_rate }}{% if not loop.last %}, {% endif %}{% endfor %}],
-                        borderColor: 'rgb(34, 197, 94)',
-                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                        tension: 0.3,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            grid: { color: 'rgba(71, 85, 105, 0.3)' },
-                            ticks: { color: '#94a3b8' }
-                        },
-                        x: {
-                            grid: { color: 'rgba(71, 85, 105, 0.3)' },
-                            ticks: { color: '#94a3b8' }
+        function reportData() {
+            return {
+                searchQuery: '',
+                statusFilter: 'all',
+                sortBy: 'status',
+                drawerOpen: false,
+                selectedArch: null,
+                architectures: {{ results | tojson | safe }},
+                openDrawer(arch) {
+                    this.selectedArch = arch;
+                    this.drawerOpen = true;
+                    // Trigger Prism highlighting after drawer opens
+                    this.$nextTick(() => {
+                        if (typeof Prism !== 'undefined') {
+                            Prism.highlightAll();
                         }
-                    },
-                    plugins: {
-                        legend: { display: false }
+                    });
+                },
+                get filteredArchitectures() {
+                    let result = this.architectures.filter(arch => {
+                        const matchesSearch = arch.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                                              arch.hash.toLowerCase().includes(this.searchQuery.toLowerCase());
+                        const matchesStatus = this.statusFilter === 'all' ||
+                            (this.statusFilter === 'passed' && arch.status === 'PASSED') ||
+                            (this.statusFilter === 'failed' && ['FAILED', 'TIMEOUT', 'ERROR'].includes(arch.status));
+                        return matchesSearch && matchesStatus;
+                    });
+
+                    if (this.sortBy === 'name') {
+                        result.sort((a, b) => a.name.localeCompare(b.name));
+                    } else if (this.sortBy === 'status') {
+                        const order = {'FAILED': 0, 'TIMEOUT': 1, 'ERROR': 2, 'PARTIAL': 3, 'PASSED': 4};
+                        result.sort((a, b) => (order[a.status] || 5) - (order[b.status] || 5));
+                    } else if (this.sortBy === 'duration') {
+                        result.sort((a, b) => b.duration - a.duration);
                     }
+
+                    return result;
                 }
-            });
+            }
         }
 
-        // Syntax highlighting on expand
-        document.querySelectorAll('details').forEach(details => {
-            details.addEventListener('toggle', () => {
-                if (details.open) {
-                    Prism.highlightAllUnder(details);
-                }
-            });
+        // Initialize charts when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pass Rate Trend Chart
+            const trendCtx = document.getElementById('trendChart');
+            if (trendCtx) {
+                new Chart(trendCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: [{% for run in run_history %}"{{ run.date }}"{% if not loop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            label: 'Pass Rate %',
+                            data: [{% for run in run_history %}{{ "%.1f"|format(run.pass_rate) }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                            borderColor: 'rgb(34, 197, 94)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: 'rgb(34, 197, 94)',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                                ticks: { color: '#94a3b8', callback: val => val + '%' }
+                            },
+                            x: {
+                                grid: { color: 'rgba(100, 116, 139, 0.1)' },
+                                ticks: { color: '#94a3b8' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Status Distribution Doughnut Chart
+            const statusCtx = document.getElementById('statusChart');
+            if (statusCtx) {
+                new Chart(statusCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Passed', 'Failed', 'Timeout', 'Error', 'Partial'],
+                        datasets: [{
+                            data: [{{ passed }}, {{ failed }}, {{ timeout }}, {{ error }}, {{ partial }}],
+                            backgroundColor: [
+                                'rgba(34, 197, 94, 0.8)',
+                                'rgba(239, 68, 68, 0.8)',
+                                'rgba(168, 85, 247, 0.8)',
+                                'rgba(107, 114, 128, 0.8)',
+                                'rgba(234, 179, 8, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgb(34, 197, 94)',
+                                'rgb(239, 68, 68)',
+                                'rgb(168, 85, 247)',
+                                'rgb(107, 114, 128)',
+                                'rgb(234, 179, 8)'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '65%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#94a3b8',
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    filter: function(item, data) {
+                                        // Hide legend items with 0 value
+                                        return data.datasets[0].data[item.index] > 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         });
     </script>
 </body>

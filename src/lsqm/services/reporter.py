@@ -130,7 +130,7 @@ def generate_html_report(
             "pytest_failed": pytest_failed,
             "pytest_output": pytest_output,
             "terraform_output": terraform_output,
-            "logs": container_logs[:5000],
+            "logs": container_logs,  # Full logs - no truncation
             "terraform_files": terraform_files,
             "app_files": app_files,
             "test_features": test_features,
