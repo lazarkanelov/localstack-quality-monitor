@@ -290,6 +290,102 @@
                         </div>
                     </div>
 
+                    <!-- Failure Analysis (prominently displayed for failed architectures) -->
+                    {% if result.failure_analysis %}
+                    <div class="p-4 border-t border-slate-800
+                        {% if result.failure_analysis.severity == 'critical' %}bg-red-900/20 border-l-4 border-l-red-500
+                        {% elif result.failure_analysis.severity == 'high' %}bg-orange-900/20 border-l-4 border-l-orange-500
+                        {% elif result.failure_analysis.severity == 'medium' %}bg-yellow-900/20 border-l-4 border-l-yellow-500
+                        {% else %}bg-slate-800/50 border-l-4 border-l-slate-500{% endif %}">
+
+                        <div class="flex items-start space-x-3">
+                            <div class="flex-shrink-0">
+                                {% if result.failure_analysis.severity == 'critical' %}
+                                <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                {% elif result.failure_analysis.severity == 'high' %}
+                                <svg class="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                {% else %}
+                                <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                {% endif %}
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <h4 class="text-sm font-bold
+                                        {% if result.failure_analysis.severity == 'critical' %}text-red-400
+                                        {% elif result.failure_analysis.severity == 'high' %}text-orange-400
+                                        {% else %}text-yellow-400{% endif %}">
+                                        {{ result.failure_analysis.summary }}
+                                    </h4>
+                                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full uppercase
+                                        {% if result.failure_analysis.severity == 'critical' %}bg-red-500/20 text-red-300
+                                        {% elif result.failure_analysis.severity == 'high' %}bg-orange-500/20 text-orange-300
+                                        {% elif result.failure_analysis.severity == 'medium' %}bg-yellow-500/20 text-yellow-300
+                                        {% else %}bg-slate-500/20 text-slate-300{% endif %}">
+                                        {{ result.failure_analysis.severity }}
+                                    </span>
+                                    {% if result.failure_analysis.affected_service %}
+                                    <span class="px-2 py-0.5 text-xs bg-purple-500/20 text-purple-300 rounded-full">
+                                        {{ result.failure_analysis.affected_service }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+
+                                <div class="space-y-3 text-sm">
+                                    <!-- Root Cause -->
+                                    <div>
+                                        <span class="text-slate-400 font-medium">Root Cause:</span>
+                                        <p class="text-slate-300 mt-1">{{ result.failure_analysis.root_cause }}</p>
+                                    </div>
+
+                                    <!-- LocalStack Impact -->
+                                    <div>
+                                        <span class="font-medium
+                                            {% if result.failure_analysis.severity == 'critical' %}text-red-400
+                                            {% elif result.failure_analysis.severity == 'high' %}text-orange-400
+                                            {% else %}text-yellow-400{% endif %}">LocalStack Quality Impact:</span>
+                                        <p class="text-slate-300 mt-1">{{ result.failure_analysis.localstack_impact }}</p>
+                                    </div>
+
+                                    {% if result.failure_analysis.affected_operation %}
+                                    <div>
+                                        <span class="text-slate-400 font-medium">Affected Operation:</span>
+                                        <code class="ml-2 px-2 py-0.5 bg-slate-900 text-slate-300 rounded text-xs">
+                                            {{ result.failure_analysis.affected_operation }}
+                                        </code>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if result.failure_analysis.container_exception %}
+                                    <div>
+                                        <span class="text-slate-400 font-medium">Container Exception:</span>
+                                        <code class="block mt-1 px-2 py-1 bg-slate-900 text-red-400 rounded text-xs overflow-x-auto">
+                                            {{ result.failure_analysis.container_exception }}
+                                        </code>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if result.failure_analysis.suggestions %}
+                                    <div>
+                                        <span class="text-slate-400 font-medium">Suggestions:</span>
+                                        <ul class="mt-1 list-disc list-inside text-slate-300">
+                                            {% for suggestion in result.failure_analysis.suggestions %}
+                                            <li class="text-xs">{{ suggestion }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- Expandable Details -->
                     <details class="group">
                         <summary class="px-4 py-3 bg-slate-800/50 hover:bg-slate-800 cursor-pointer flex items-center justify-between transition">

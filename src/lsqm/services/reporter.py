@@ -111,6 +111,15 @@ def generate_html_report(
         arch_artifact_url = f"{artifact_repo_url}/tree/main/architectures/{arch_hash}" if artifact_repo_url else ""
         app_artifact_url = f"{artifact_repo_url}/tree/main/apps/{arch_hash}" if artifact_repo_url else ""
 
+        # Analyze failures for LocalStack quality insights
+        container_logs = result.get("container_logs", "")
+        failure_analysis = analyze_failure(
+            status=status,
+            terraform_output=terraform_output,
+            container_logs=container_logs,
+            error_message=result.get("error_message"),
+        )
+
         result_rows.append({
             "hash": arch_hash,
             "name": arch_data.get("name", arch_hash[:8]),
@@ -121,7 +130,7 @@ def generate_html_report(
             "pytest_failed": pytest_failed,
             "pytest_output": pytest_output,
             "terraform_output": terraform_output,
-            "logs": result.get("container_logs", "")[:5000],
+            "logs": container_logs[:5000],
             "terraform_files": terraform_files,
             "app_files": app_files,
             "test_features": test_features,
@@ -131,6 +140,7 @@ def generate_html_report(
             "original_format": arch_data.get("original_format", "terraform"),
             "arch_artifact_url": arch_artifact_url,
             "app_artifact_url": app_artifact_url,
+            "failure_analysis": failure_analysis,
         })
 
     # Calculate test pass rate
@@ -380,6 +390,249 @@ def _strip_ansi(text: str) -> str:
     """Remove ANSI escape codes from text."""
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
     return ansi_escape.sub("", text)
+
+
+def analyze_failure(
+    status: str,
+    terraform_output: str,
+    container_logs: str,
+    error_message: str | None = None,
+) -> dict | None:
+    """Analyze why a validation failed and what it means for LocalStack quality.
+
+    Args:
+        status: Validation status (FAILED, TIMEOUT, ERROR, etc.)
+        terraform_output: Terraform apply output/logs
+        container_logs: LocalStack container logs
+        error_message: Optional error message from validation
+
+    Returns:
+        Dict with analysis details or None if passed
+    """
+    if status in ("PASSED", "PARTIAL"):
+        return None
+
+    analysis = {
+        "category": "unknown",
+        "summary": "",
+        "root_cause": "",
+        "localstack_impact": "",
+        "affected_service": None,
+        "affected_operation": None,
+        "severity": "medium",  # low, medium, high, critical
+        "suggestions": [],
+    }
+
+    combined_logs = f"{terraform_output}\n{container_logs}".lower()
+    tf_lower = terraform_output.lower()
+
+    # === TIMEOUT ANALYSIS ===
+    if status == "TIMEOUT":
+        analysis["category"] = "timeout"
+        analysis["severity"] = "high"
+
+        # Check for specific polling patterns
+        if "describesubnets" in combined_logs or "describe_subnets" in combined_logs:
+            analysis["summary"] = "EC2 Subnet State Transition Timeout"
+            analysis["root_cause"] = (
+                "Terraform is polling DescribeSubnets waiting for subnets to reach "
+                "'available' state, but LocalStack's EC2 implementation is not "
+                "transitioning the subnet state correctly."
+            )
+            analysis["localstack_impact"] = (
+                "VPC/subnet creation workflows are blocked. Any Terraform module "
+                "that creates subnets and waits for them to become available will "
+                "hang indefinitely. This affects a large number of real-world "
+                "infrastructure patterns."
+            )
+            analysis["affected_service"] = "EC2"
+            analysis["affected_operation"] = "DescribeSubnets (state transition)"
+            analysis["severity"] = "critical"
+            analysis["suggestions"] = [
+                "Check LocalStack EC2 subnet state machine implementation",
+                "Verify subnet state transitions from 'pending' to 'available'",
+                "Review EC2 resource lifecycle handling",
+            ]
+
+        elif "describenat" in combined_logs or "nat_gateway" in combined_logs:
+            analysis["summary"] = "NAT Gateway State Transition Timeout"
+            analysis["root_cause"] = (
+                "Terraform is waiting for NAT Gateway to reach 'available' state, "
+                "but LocalStack is not transitioning the resource state."
+            )
+            analysis["localstack_impact"] = (
+                "Private subnet internet access patterns are broken. Applications "
+                "requiring NAT Gateways cannot be deployed."
+            )
+            analysis["affected_service"] = "EC2"
+            analysis["affected_operation"] = "DescribeNatGateways (state transition)"
+            analysis["severity"] = "high"
+
+        elif "describedbinstances" in combined_logs or "rds" in combined_logs:
+            analysis["summary"] = "RDS Instance State Transition Timeout"
+            analysis["root_cause"] = (
+                "RDS instance is not transitioning to 'available' state within "
+                "the expected timeframe."
+            )
+            analysis["localstack_impact"] = (
+                "Database provisioning workflows are blocked. Applications requiring "
+                "RDS cannot be deployed via Terraform."
+            )
+            analysis["affected_service"] = "RDS"
+            analysis["affected_operation"] = "DescribeDBInstances (state transition)"
+            analysis["severity"] = "high"
+
+        else:
+            analysis["summary"] = "Resource Provisioning Timeout"
+            analysis["root_cause"] = (
+                "Terraform timed out waiting for a resource to reach the expected state. "
+                "This typically indicates LocalStack's resource state machine is not "
+                "transitioning correctly."
+            )
+            analysis["localstack_impact"] = (
+                "Resource creation workflows hang, preventing successful deployments."
+            )
+            analysis["suggestions"] = [
+                "Check LocalStack logs for the specific resource being waited on",
+                "Review resource state transition logic",
+            ]
+
+    # === TERRAFORM ERROR ANALYSIS ===
+    elif status == "FAILED":
+        analysis["category"] = "terraform_error"
+
+        # Missing variables
+        if "no value for required variable" in tf_lower or "required variable" in tf_lower:
+            var_match = re.search(r'variable\s+"?(\w+)"?', terraform_output)
+            var_name = var_match.group(1) if var_match else "unknown"
+            analysis["summary"] = f"Missing Required Variable: {var_name}"
+            analysis["root_cause"] = (
+                "The Terraform module requires input variables that were not provided. "
+                "This is not a LocalStack issue but a test configuration issue."
+            )
+            analysis["localstack_impact"] = (
+                "No LocalStack impact - this is a test setup issue that needs "
+                "terraform.tfvars or variable defaults."
+            )
+            analysis["severity"] = "low"
+            analysis["category"] = "configuration"
+            analysis["suggestions"] = [
+                f"Add default value for variable '{var_name}' or provide terraform.tfvars",
+            ]
+
+        # Unsupported service/feature
+        elif "unsupported" in tf_lower or "not implemented" in tf_lower:
+            analysis["summary"] = "Unsupported AWS Feature"
+            analysis["root_cause"] = (
+                "Terraform tried to use an AWS API operation or feature that "
+                "LocalStack does not implement."
+            )
+            analysis["localstack_impact"] = (
+                "This AWS feature is not available in LocalStack. Architectures "
+                "using this feature cannot be tested."
+            )
+            analysis["severity"] = "medium"
+            analysis["suggestions"] = [
+                "Check LocalStack feature coverage documentation",
+                "Consider if this is a pro-only feature",
+            ]
+
+        # API errors
+        elif "error:" in tf_lower:
+            # Extract error details
+            error_match = re.search(r"error[:\s]+([^\n]+)", terraform_output, re.IGNORECASE)
+            error_detail = error_match.group(1).strip() if error_match else "Unknown error"
+
+            # Service-specific errors
+            if "s3" in combined_logs:
+                analysis["affected_service"] = "S3"
+            elif "lambda" in combined_logs:
+                analysis["affected_service"] = "Lambda"
+            elif "dynamodb" in combined_logs:
+                analysis["affected_service"] = "DynamoDB"
+            elif "sqs" in combined_logs:
+                analysis["affected_service"] = "SQS"
+            elif "sns" in combined_logs:
+                analysis["affected_service"] = "SNS"
+            elif "ec2" in combined_logs or "vpc" in combined_logs:
+                analysis["affected_service"] = "EC2/VPC"
+            elif "iam" in combined_logs:
+                analysis["affected_service"] = "IAM"
+            elif "apigateway" in combined_logs:
+                analysis["affected_service"] = "API Gateway"
+
+            analysis["summary"] = f"Terraform Error: {error_detail[:100]}"
+            analysis["root_cause"] = (
+                f"Terraform encountered an error during resource creation: {error_detail}"
+            )
+            analysis["localstack_impact"] = (
+                "This error indicates a potential issue with LocalStack's implementation "
+                f"of {analysis['affected_service'] or 'an AWS service'}."
+            )
+
+        # Access denied / permissions
+        elif "accessdenied" in tf_lower or "access denied" in tf_lower:
+            analysis["summary"] = "Access Denied Error"
+            analysis["root_cause"] = (
+                "LocalStack returned an AccessDenied error. In LocalStack, this "
+                "usually indicates an IAM policy evaluation issue or a bug in "
+                "permission handling."
+            )
+            analysis["localstack_impact"] = (
+                "IAM policy enforcement may be incorrectly blocking operations. "
+                "This could affect realistic testing scenarios."
+            )
+            analysis["affected_service"] = "IAM"
+            analysis["severity"] = "medium"
+
+        # Invalid parameter
+        elif "invalidparameter" in tf_lower or "validationerror" in tf_lower:
+            analysis["summary"] = "Invalid Parameter Error"
+            analysis["root_cause"] = (
+                "LocalStack rejected a parameter as invalid. This could indicate "
+                "stricter validation than AWS or a bug in parameter handling."
+            )
+            analysis["localstack_impact"] = (
+                "Parameter validation differs from AWS behavior, which could cause "
+                "false negatives in testing."
+            )
+            analysis["severity"] = "medium"
+
+        else:
+            analysis["summary"] = "Terraform Apply Failed"
+            analysis["root_cause"] = "Terraform failed to apply the configuration."
+            analysis["localstack_impact"] = (
+                "Unable to determine specific LocalStack impact without more details."
+            )
+
+    # === GENERAL ERROR ===
+    elif status == "ERROR":
+        analysis["category"] = "system_error"
+        analysis["summary"] = error_message or "System Error"
+        analysis["root_cause"] = (
+            "A system-level error occurred during validation, not directly "
+            "related to Terraform or LocalStack compatibility."
+        )
+        analysis["localstack_impact"] = (
+            "Unable to assess LocalStack compatibility due to test infrastructure issue."
+        )
+        analysis["severity"] = "low"
+
+    # === CONTAINER LOG ANALYSIS ===
+    # Look for additional clues in container logs
+    if "exception" in container_logs.lower() or "error" in container_logs.lower():
+        exception_match = re.search(
+            r"(Exception|Error):\s*([^\n]+)", container_logs, re.IGNORECASE
+        )
+        if exception_match and not analysis.get("container_exception"):
+            analysis["container_exception"] = exception_match.group(0).strip()[:200]
+
+    if "not implemented" in container_logs.lower():
+        analysis["has_not_implemented"] = True
+        if analysis["severity"] == "medium":
+            analysis["severity"] = "high"
+
+    return analysis
 
 
 def _get_inline_template() -> str:
