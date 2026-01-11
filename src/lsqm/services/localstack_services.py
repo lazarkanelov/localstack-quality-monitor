@@ -186,14 +186,8 @@ def is_standalone_architecture(tf_content: str) -> tuple[bool, str]:
     data_pattern = r'data\s+"([^"]+)"\s+"[^"]+"'
     data_sources = re.findall(data_pattern, tf_content)
 
-    # These data sources typically require external state or resources
-    external_data_sources = [
-        "terraform_remote_state",
-        "aws_caller_identity",  # OK - doesn't need external
-        "aws_region",  # OK
-        "aws_availability_zones",  # OK
-    ]
-
+    # Only terraform_remote_state requires external resources
+    # (aws_caller_identity, aws_region, aws_availability_zones are OK)
     problematic_data = [
         ds for ds in data_sources
         if ds == "terraform_remote_state"

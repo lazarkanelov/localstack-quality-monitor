@@ -72,7 +72,7 @@ def clone_or_pull_artifacts(
                 error_msg = result.stderr or result.stdout or "Unknown error"
                 raise RuntimeError(f"Git clone failed: {error_msg}")
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Git clone failed: {e.stderr or e.stdout or str(e)}")
+            raise RuntimeError(f"Git clone failed: {e.stderr or e.stdout or str(e)}") from e
 
     # Ensure basic directory structure exists
     (artifacts_dir / "architectures").mkdir(exist_ok=True)
