@@ -5,19 +5,37 @@
 github_repos:
   enabled: true
   repositories:
-    # AWS Samples - complete example projects (standalone Terraform)
+    # AWS Serverless Patterns - search for all Terraform examples
     - url: https://github.com/aws-samples/serverless-patterns
       paths:
-        - "apigw-lambda-dynamodb-terraform"
-        - "s3-lambda-terraform"
-        - "eventbridge-lambda-terraform"
-        - "lambda-destinations-terraform"
-        - "apigw-rest-api-lambda-terraform"
-        - "apigw-http-api-lambda-terraform"
-        - "dynamodb-streams-lambda-terraform"
+        - "*-terraform"
+        - "**/*-terraform"
+    # Terraform Provider AWS examples
+    - url: https://github.com/hashicorp/terraform-provider-aws
+      paths:
+        - "examples"
 
-# Disable other sources that mostly find non-standalone modules
-terraform_registry: false
-github_orgs: false
+# GitHub Organizations - scan for .tf files
+github_orgs:
+  enabled: true
+  organizations:
+    - aws-samples
+    - terraform-aws-modules
+  file_patterns:
+    - "*.tf"
+    - "examples/**/*.tf"
+  max_files_per_repo: 100
+  skip_archived: true
+  skip_forks: true
+
+# Terraform Registry - popular AWS modules
+terraform_registry:
+  enabled: true
+  providers:
+    - aws
+  limit_per_provider: 100
+  min_downloads: 1000
+
+# Disable sources with lower standalone yield
 serverless: false
 cdk: false

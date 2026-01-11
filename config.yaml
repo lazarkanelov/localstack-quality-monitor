@@ -7,19 +7,19 @@ sources:
     enabled: true
     repositories:
       # AWS Serverless Patterns - excellent source of standalone examples
-      - repo: aws-samples/serverless-patterns
+      - url: aws-samples/serverless-patterns
         paths:
           - "*-terraform"
           - "**/*-terraform"
       # Terraform AWS Examples
-      - repo: hashicorp/terraform-provider-aws
+      - url: hashicorp/terraform-provider-aws
         paths:
           - "examples"
       # AWS Quickstart patterns
-      - repo: aws-ia/terraform-aws-eks-blueprints
+      - url: aws-ia/terraform-aws-eks-blueprints
         paths:
           - "examples"
-      - repo: aws-ia/terraform-aws-vpc
+      - url: aws-ia/terraform-aws-vpc
         paths:
           - "examples"
 
