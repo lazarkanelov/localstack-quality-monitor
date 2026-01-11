@@ -50,65 +50,65 @@
         details[open] .chevron { transform: rotate(180deg); }
         .chevron { transition: transform 0.2s ease-in-out; }
 
-        /* Force all pre/code to wrap and not overflow */
+        /*
+         * Text wrapping styles to handle long content (URLs, error messages, code)
+         * Using !important to override Prism.js syntax highlighting library styles
+         * Reference: MDN overflow-wrap, word-break documentation
+         */
+
+        /* Pre/code blocks: wrap text while preserving formatting */
         pre, pre[class*="language-"] {
             margin: 0 !important;
             border-radius: 0.5rem !important;
             max-height: 12rem;
-            overflow: auto !important;
-            white-space: pre-wrap !important;
-            word-wrap: break-word !important;
-            word-break: break-word !important;
-            overflow-wrap: break-word !important;
-            max-width: 100% !important;
-            box-sizing: border-box !important;
+            overflow: auto;
+            white-space: pre-wrap !important;       /* Preserve whitespace but allow wrapping */
+            overflow-wrap: break-word !important;   /* Break long words to prevent overflow */
+            max-width: 100%;
+            box-sizing: border-box;
         }
 
         code, code[class*="language-"] {
             white-space: pre-wrap !important;
-            word-wrap: break-word !important;
-            word-break: break-word !important;
             overflow-wrap: break-word !important;
             font-size: 0.8rem !important;
         }
 
-        /* Override Prism.js token styles to allow wrapping */
+        /* Override Prism.js .token spans which default to white-space: pre */
         .token {
             white-space: pre-wrap !important;
         }
 
-        /* Constrain all code blocks within cards */
+        /* Constrain code blocks within result cards */
         .result-card pre,
         .result-card code,
         .result-card .token {
-            max-width: 100% !important;
-            word-wrap: break-word !important;
-            word-break: break-word !important;
+            max-width: 100%;
+            overflow-wrap: break-word !important;
         }
 
-        /* Prevent any horizontal overflow */
-        body, html {
-            overflow-x: hidden !important;
-            max-width: 100vw !important;
+        /* Container constraints - use overflow:hidden on inner containers, not body */
+        main {
+            max-width: 100%;
+            overflow-x: auto;  /* Allow scrolling if absolutely needed (accessibility) */
         }
 
-        main, .result-card, .tab-content, details {
-            max-width: 100% !important;
-            overflow-x: hidden !important;
-            box-sizing: border-box !important;
+        .result-card, .tab-content, details {
+            max-width: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
         }
 
-        /* Force text wrapping on long strings */
+        /* Utility class for aggressive breaking (URLs, hashes) */
         .break-anywhere {
-            word-break: break-all !important;
-            overflow-wrap: anywhere !important;
+            overflow-wrap: anywhere;  /* Modern standard for breaking anywhere */
         }
 
-        /* Ensure details content doesn't overflow */
+        /* Details content containment */
         details > div,
         details > summary {
-            max-width: 100% !important;
-            overflow: hidden !important;
+            max-width: 100%;
+            overflow: hidden;
         }
 
         .tab-content { display: none; }
