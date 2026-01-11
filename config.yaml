@@ -1,0 +1,53 @@
+# LocalStack Quality Monitor Configuration
+# This config enables discovery from multiple sources with standalone Terraform examples
+
+sources:
+  # Direct GitHub repositories with known standalone Terraform examples
+  github_repos:
+    enabled: true
+    repositories:
+      # AWS Serverless Patterns - excellent source of standalone examples
+      - repo: aws-samples/serverless-patterns
+        paths:
+          - "*-terraform"
+          - "**/*-terraform"
+      # Terraform AWS Examples
+      - repo: hashicorp/terraform-provider-aws
+        paths:
+          - "examples"
+      # AWS Quickstart patterns
+      - repo: aws-ia/terraform-aws-eks-blueprints
+        paths:
+          - "examples"
+      - repo: aws-ia/terraform-aws-vpc
+        paths:
+          - "examples"
+
+  # GitHub Organizations - scan for .tf files
+  github_orgs:
+    enabled: true
+    organizations:
+      - aws-samples
+      - terraform-aws-modules
+    file_patterns:
+      - "*.tf"
+      - "examples/**/*.tf"
+    max_files_per_repo: 100
+    skip_archived: true
+    skip_forks: true
+
+  # Terraform Registry - popular AWS modules
+  terraform_registry:
+    enabled: true
+    providers:
+      - aws
+    limit_per_provider: 200
+    min_downloads: 500
+
+  # Serverless Framework (transpiled to Terraform)
+  serverless:
+    enabled: false  # Disable for now - produces fewer standalone results
+
+  # AWS CDK (transpiled to Terraform)
+  cdk:
+    enabled: false  # Disable for now - produces fewer standalone results

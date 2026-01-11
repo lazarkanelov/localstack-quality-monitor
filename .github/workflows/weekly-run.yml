@@ -83,7 +83,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
         run: |
-          lsqm mine --limit ${{ github.event.inputs.discovery_limit || '100' }}
+          lsqm --config config.yaml mine --limit ${{ github.event.inputs.discovery_limit || '100' }}
 
       - name: Save updated artifacts cache
         uses: actions/cache/save@v4
