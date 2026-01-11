@@ -167,7 +167,7 @@
     <main class="container mx-auto px-4 py-8 max-w-7xl">
 
         <!-- Overview Tab -->
-        <div id="overview" class="tab-content active">
+        <div id="overview" class="tab-content active" style="display:block">
             <!-- Key Metrics -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
                 <div class="bg-slate-900 rounded-xl p-6 border border-slate-800 text-center">
@@ -266,7 +266,7 @@
         </div>
 
         <!-- Test Results Tab -->
-        <div id="results" class="tab-content">
+        <div id="results" class="tab-content" style="display:none">
             <!-- Filter Buttons -->
             <div class="flex space-x-2 mb-6">
                 <button onclick="filterResults('all')" class="filter-btn active px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition">
@@ -689,7 +689,7 @@
         </div>
 
         <!-- Services Tab -->
-        <div id="services" class="tab-content">
+        <div id="services" class="tab-content" style="display:none">
             <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
                 <div class="p-4 border-b border-slate-800">
                     <h2 class="text-lg font-semibold text-white">Service Compatibility Matrix</h2>
@@ -741,7 +741,7 @@
         </div>
 
         <!-- History Tab -->
-        <div id="history" class="tab-content">
+        <div id="history" class="tab-content" style="display:none">
             <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
                 <div class="p-4 border-b border-slate-800">
                     <h2 class="text-lg font-semibold text-white">Run History</h2>
@@ -801,15 +801,20 @@
     </footer>
 
     <script>
-        // Tab switching
+        // Tab switching - use inline styles as fallback for CSS loading issues
         function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+                el.style.display = 'none';  // Inline fallback
+            });
             document.querySelectorAll('.tab-btn').forEach(el => {
                 el.classList.remove('active');
                 el.classList.add('text-slate-400');
             });
 
-            document.getElementById(tabId).classList.add('active');
+            const activeTab = document.getElementById(tabId);
+            activeTab.classList.add('active');
+            activeTab.style.display = 'block';  // Inline fallback
             event.target.classList.add('active');
             event.target.classList.remove('text-slate-400');
         }
