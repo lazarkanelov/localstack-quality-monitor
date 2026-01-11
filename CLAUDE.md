@@ -26,4 +26,10 @@ Python 3.11+ (mandated by constitution): Follow standard conventions
 - 001-lsqm-cli: Added Python 3.11+ (mandated by constitution) + Click (CLI), Docker SDK for Python (containers), Jinja2 (HTML reports), anthropic (Claude API), boto3 (AWS SDK), aiohttp (async HTTP)
 
 <!-- MANUAL ADDITIONS START -->
+
+## Git Workflow
+
+- NEVER commit and push automatically unless explicitly told to do so by the user
+- Always wait for user approval before running git commit or git push
+
 <!-- MANUAL ADDITIONS END -->
