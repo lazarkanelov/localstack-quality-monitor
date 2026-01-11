@@ -56,7 +56,8 @@
             max-height: 12rem;
             overflow: auto;
             white-space: pre-wrap;
-            word-break: break-word;
+            word-break: break-all;
+            max-width: 100%;
         }
 
         /* Constrain all code blocks within cards */
@@ -64,6 +65,23 @@
         .result-card code {
             max-width: 100%;
             overflow-wrap: break-word;
+            word-break: break-all;
+        }
+
+        /* Prevent any horizontal overflow */
+        body, html {
+            overflow-x: hidden;
+        }
+
+        main, .result-card, .tab-content {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* Force text wrapping on long strings */
+        .break-anywhere {
+            word-break: break-all;
+            overflow-wrap: anywhere;
         }
 
         code[class*="language-"] {
@@ -243,25 +261,25 @@
             </div>
 
             <!-- Results Cards -->
-            <div class="space-y-4" id="resultsContainer">
+            <div class="space-y-4 max-w-full overflow-hidden" id="resultsContainer">
                 {% for result in results %}
-                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden" data-status="{{ result.status|lower }}">
+                <div class="result-card bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-full" data-status="{{ result.status|lower }}">
                     <!-- Result Header -->
-                    <div class="p-4 border-b border-slate-800">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-3">
-                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-{{ result.status|lower }}">
+                    <div class="p-4 border-b border-slate-800 overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 min-w-0">
+                            <div class="flex-1 min-w-0 overflow-hidden">
+                                <div class="flex items-center space-x-3 min-w-0">
+                                    <span class="px-3 py-1 text-xs font-bold text-white rounded-full status-{{ result.status|lower }} flex-shrink-0">
                                         {{ result.status }}
                                     </span>
-                                    <h3 class="text-lg font-semibold text-white">{{ result.name }}</h3>
+                                    <h3 class="text-lg font-semibold text-white truncate">{{ result.name }}</h3>
                                 </div>
-                                <div class="mt-2 flex items-center space-x-4 text-sm text-slate-400">
-                                    <span title="Architecture Hash">
-                                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+                                    <span title="Architecture Hash" class="break-anywhere">
+                                        <svg class="inline w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
                                         </svg>
-                                        {{ result.hash }}
+                                        <span class="break-all">{{ result.hash[:16] }}...</span>
                                     </span>
                                     <span title="Duration">
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -301,14 +319,14 @@
 
                     <!-- Failure Analysis (prominently displayed for failed architectures) -->
                     {% if result.failure_analysis and result.failure_analysis.error_message %}
-                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden">
-                        <div class="space-y-2 overflow-hidden">
+                    <div class="p-4 border-t border-slate-800 bg-red-950/30 border-l-4 border-l-red-500 overflow-hidden max-w-full">
+                        <div class="space-y-2 overflow-hidden max-w-full">
                             <!-- Error Message - THE KEY INFO -->
-                            <div class="flex items-start space-x-2 overflow-hidden">
+                            <div class="flex items-start space-x-2 overflow-hidden max-w-full min-w-0">
                                 <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
-                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden">{{ result.failure_analysis.error_message }}</code>
+                                <code class="text-red-300 text-sm font-mono break-all overflow-hidden min-w-0 flex-1">{{ result.failure_analysis.error_message }}</code>
                             </div>
 
                             <!-- Tags row -->
@@ -337,16 +355,16 @@
 
                             <!-- LocalStack exception if different from main error -->
                             {% if result.failure_analysis.localstack_exception %}
-                            <div class="pt-2 border-t border-red-900/50">
+                            <div class="pt-2 border-t border-red-900/50 overflow-hidden">
                                 <span class="text-xs text-slate-400">LocalStack:</span>
-                                <code class="block text-xs text-orange-300 font-mono mt-1">{{ result.failure_analysis.localstack_exception }}</code>
+                                <code class="block text-xs text-orange-300 font-mono mt-1 break-all">{{ result.failure_analysis.localstack_exception }}</code>
                             </div>
                             {% endif %}
 
                             {% if result.failure_analysis.not_implemented %}
-                            <div class="pt-2 border-t border-red-900/50">
+                            <div class="pt-2 border-t border-red-900/50 overflow-hidden">
                                 <span class="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 rounded text-xs">Not Implemented</span>
-                                <code class="block text-xs text-yellow-300 font-mono mt-1">{{ result.failure_analysis.not_implemented }}</code>
+                                <code class="block text-xs text-yellow-300 font-mono mt-1 break-all">{{ result.failure_analysis.not_implemented }}</code>
                             </div>
                             {% endif %}
                         </div>
@@ -362,7 +380,7 @@
                             </svg>
                         </summary>
 
-                        <div class="p-4 space-y-6 overflow-hidden">
+                        <div class="p-4 space-y-6 overflow-hidden max-w-full">
                             <!-- For failed architectures: Show diagnostic info FIRST -->
                             {% if result.status in ['FAILED', 'TIMEOUT', 'ERROR'] %}
 
@@ -376,7 +394,7 @@
                                     Terraform Output (Error Details)
                                 </h4>
                                 <div class="bg-red-950/30 border border-red-900/50 rounded-lg overflow-hidden">
-                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">{{ result.terraform_output }}</code></pre>
+                                    <pre class="!bg-transparent text-xs max-h-48 p-3 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">{{ result.terraform_output }}</code></pre>
                                 </div>
                             </div>
                             {% endif %}
@@ -394,7 +412,7 @@
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">{{ result.logs }}</code></pre>
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">{{ result.logs }}</code></pre>
                                 </div>
                             </details>
                             {% endif %}
@@ -420,9 +438,9 @@
                                             <dt class="text-slate-500">Original Format</dt>
                                             <dd class="text-white">{{ result.original_format or 'terraform' }}</dd>
                                         </div>
-                                        <div class="col-span-2">
+                                        <div class="col-span-2 overflow-hidden">
                                             <dt class="text-slate-500">Source URL</dt>
-                                            <dd><a href="{{ result.source_url }}" target="_blank" class="text-blue-400 hover:underline break-all">{{ result.source_url }}</a></dd>
+                                            <dd class="overflow-hidden"><a href="{{ result.source_url }}" target="_blank" class="text-blue-400 hover:underline break-all block overflow-hidden">{{ result.source_url }}</a></dd>
                                         </div>
                                     </dl>
                                 </div>
@@ -616,7 +634,7 @@
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">{{ result.terraform_output }}</code></pre>
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">{{ result.terraform_output }}</code></pre>
                                 </div>
                             </details>
                             {% endif %}
@@ -634,7 +652,7 @@
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-words"><code class="language-bash">{{ result.logs }}</code></pre>
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">{{ result.logs }}</code></pre>
                                 </div>
                             </details>
                             {% endif %}
