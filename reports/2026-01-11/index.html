@@ -50,42 +50,65 @@
         details[open] .chevron { transform: rotate(180deg); }
         .chevron { transition: transform 0.2s ease-in-out; }
 
-        pre[class*="language-"], pre {
+        /*
+         * Text wrapping styles to handle long content (URLs, error messages, code)
+         * Using !important to override Prism.js syntax highlighting library styles
+         * Reference: MDN overflow-wrap, word-break documentation
+         */
+
+        /* Pre/code blocks: wrap text while preserving formatting */
+        pre, pre[class*="language-"] {
             margin: 0 !important;
             border-radius: 0.5rem !important;
             max-height: 12rem;
             overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
+            white-space: pre-wrap !important;       /* Preserve whitespace but allow wrapping */
+            overflow-wrap: break-word !important;   /* Break long words to prevent overflow */
             max-width: 100%;
+            box-sizing: border-box;
         }
 
-        /* Constrain all code blocks within cards */
-        .result-card pre,
-        .result-card code {
-            max-width: 100%;
-            overflow-wrap: break-word;
-            word-break: break-all;
-        }
-
-        /* Prevent any horizontal overflow */
-        body, html {
-            overflow-x: hidden;
-        }
-
-        main, .result-card, .tab-content {
-            max-width: 100%;
-            overflow-x: hidden;
-        }
-
-        /* Force text wrapping on long strings */
-        .break-anywhere {
-            word-break: break-all;
-            overflow-wrap: anywhere;
-        }
-
-        code[class*="language-"] {
+        code, code[class*="language-"] {
+            white-space: pre-wrap !important;
+            overflow-wrap: break-word !important;
             font-size: 0.8rem !important;
+        }
+
+        /* Override Prism.js .token spans which default to white-space: pre */
+        .token {
+            white-space: pre-wrap !important;
+        }
+
+        /* Constrain code blocks within result cards */
+        .result-card pre,
+        .result-card code,
+        .result-card .token {
+            max-width: 100%;
+            overflow-wrap: break-word !important;
+        }
+
+        /* Container constraints - use overflow:hidden on inner containers, not body */
+        main {
+            max-width: 100%;
+            overflow-x: auto;  /* Allow scrolling if absolutely needed (accessibility) */
+        }
+
+        .result-card, .tab-content, details {
+            max-width: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        /* Utility class for aggressive breaking (URLs, hashes) */
+        .break-anywhere {
+            overflow-wrap: anywhere;  /* Modern standard for breaking anywhere */
+        }
+
+        /* Details content containment */
+        details > div,
+        details > summary {
+            max-width: 100%;
+            overflow: hidden;
         }
 
         .tab-content { display: none; }
@@ -112,7 +135,7 @@
                 <div>
                     <h1 class="text-2xl font-bold gradient-text">LocalStack Quality Monitor</h1>
                     <p class="text-sm text-slate-400 mt-1">
-                        Run <code class="bg-slate-800 px-2 py-0.5 rounded text-xs">90a5f889-2d6</code>
+                        Run <code class="bg-slate-800 px-2 py-0.5 rounded text-xs">85b6cfea-755</code>
                         &bull; 2026-01-11
                         &bull; LocalStack <span class="text-blue-400">latest</span>
                         &bull; Duration <span class="text-green-400">0s</span>
@@ -388,7 +411,7 @@
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        310.9s
+                                        309.2s
                                     </span>
                                     
                                     <a href="https://registry.terraform.io/modules/ViktorUJ/vpc/aws/1.1.0" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -464,52 +487,52 @@
                                     </svg>
                                 </summary>
                                 <div class="bg-slate-800 rounded-lg overflow-hidden mt-2">
-                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">03:59.384  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:03:59.387  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:09.392  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:09.396  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:19.407  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:19.409  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:29.424  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:29.427  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:39.430  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:39.433  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:49.444  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:49.447  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:59.461  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:04:59.465  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:09.467  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:09.470  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:19.477  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:19.479  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:29.486  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:29.489  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:39.499  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:39.502  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:49.506  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:49.509  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:59.512  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:05:59.514  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:09.529  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:09.532  INFO --- [et.reactor-8] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:19.548  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:19.549  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:29.563  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:29.567  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:39.569  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:39.572  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:49.580  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:49.583  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:59.589  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:06:59.591  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:07:09.606  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:07:09.609  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:07:19.612  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:07:19.615  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:07:29.630  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:07:29.633  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:07:39.641  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
-2026-01-11T16:07:39.645  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+                                    <pre class="!bg-slate-900 text-xs max-h-48 overflow-auto whitespace-pre-wrap break-all"><code class="language-bash">25:49.327  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:25:50.330  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:25:59.333  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:00.336  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:09.338  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:10.341  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:19.352  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:20.346  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:29.357  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:30.351  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:39.370  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:40.356  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:49.383  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:50.362  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:26:59.397  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:00.368  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:09.403  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:10.374  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:19.416  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:20.380  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:29.421  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:30.386  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:39.435  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:40.391  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:49.440  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:50.397  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:27:59.461  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:00.402  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:09.475  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:10.408  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:19.480  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:20.413  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:29.494  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:30.419  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:39.504  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:40.424  INFO --- [et.reactor-0] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:49.509  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:50.429  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:28:59.516  INFO --- [et.reactor-2] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:29:00.435  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:29:09.522  INFO --- [et.reactor-7] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:29:10.441  INFO --- [et.reactor-6] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:29:19.528  INFO --- [et.reactor-1] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:29:20.448  INFO --- [et.reactor-5] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:29:29.534  INFO --- [et.reactor-4] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
+2026-01-11T16:29:30.454  INFO --- [et.reactor-3] localstack.request.aws     : AWS ec2.DescribeSubnets => 200
 </code></pre>
                                 </div>
                             </details>
@@ -613,7 +636,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl"></code></pre>
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl"></code></pre>
                                     </details>
                                     
                                     <details class="bg-slate-800 rounded-lg overflow-hidden">
@@ -626,7 +649,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">variable "vpc" {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">variable "vpc" {
   type = object({
     name                  = string
     cidr                  = string
@@ -840,7 +863,7 @@ variable "existing_eip_ids_az" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">locals {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">locals {
   az_mapping = {
     for idx, az in data.aws_availability_zones.available.names : az =>
     data.aws_availability_zones.available.zone_ids[idx]
@@ -917,7 +940,7 @@ variable "existing_eip_ids_az" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">terraform {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">terraform {
   required_version = ">= 1.0"
 
   required_providers {
@@ -940,7 +963,7 @@ variable "existing_eip_ids_az" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">resource "aws_vpc" "default" {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">resource "aws_vpc" "default" {
   cidr_block           = var.vpc.cidr
   enable_dns_support   = var.vpc.enable_dns_support
   enable_dns_hostnames = var.vpc.enable_dns_hostnames
@@ -1013,7 +1036,7 @@ resource "aws_vpc_dhcp_options_association" "default" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">resource "aws_subnet" "private" {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">resource "aws_subnet" "private" {
   vpc_id                  = aws_vpc.default.id
   for_each                = local.normalized_private_subnets_all
   map_public_ip_on_launch = "false"
@@ -1293,7 +1316,7 @@ resource "aws_network_acl_association" "private_association" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">data "aws_availability_zones" "available" {}
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">data "aws_availability_zones" "available" {}
 </code></pre>
                                     </details>
                                     
@@ -1307,7 +1330,7 @@ resource "aws_network_acl_association" "private_association" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">resource "aws_subnet" "public" {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.default.id
   for_each                = local.normalized_public_subnets_all
   map_public_ip_on_launch = each.value.map_public_ip_on_launch
@@ -1429,7 +1452,7 @@ resource "aws_network_acl_association" "public_association" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl"># inputs
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl"># inputs
 output "tags_default" {
   description = "Default tags"
   value       = var.tags_default
@@ -1598,7 +1621,7 @@ output "route_table_public_raw" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import time
 from typing import Dict, List, Any
 from app import NetworkInfrastructureManager, NetworkResource
@@ -1993,7 +2016,7 @@ class TestNetworkInfrastructure:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import os
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import os
 import boto3
 import pytest
 from typing import Dict, Any
@@ -2106,7 +2129,7 @@ def test_instances_config() -> Dict[str, Any]:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import boto3
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import boto3
 import os
 import time
 import logging
@@ -2625,7 +2648,7 @@ def create_network_manager() -> NetworkInfrastructureManager:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">boto3>=1.34.0
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">boto3>=1.34.0
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 botocore>=1.34.0</code></pre>
@@ -2818,7 +2841,7 @@ botocore>=1.34.0</code></pre>
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        10.7s
+                                        10.5s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/eventbridge-lambda-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -3051,7 +3074,7 @@ Ready.
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">terraform {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">terraform {
   required_providers {
 	aws = {
 	  source  = "hashicorp/aws"
@@ -3214,7 +3237,7 @@ output "ConsumerFunction" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import json
 import time
 from datetime import datetime
@@ -3517,7 +3540,7 @@ class TestTransactionProcessor:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import boto3
 import os
 import json
@@ -3658,7 +3681,7 @@ def sample_transaction_events():
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import boto3
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import boto3
 import json
 import logging
 import os
@@ -3988,7 +4011,7 @@ class TransactionProcessor:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">boto3>=1.34.0
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">boto3>=1.34.0
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 typing-extensions>=4.8.0</code></pre>
@@ -4211,7 +4234,7 @@ typing-extensions>=4.8.0</code></pre>
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        11.4s
+                                        11.0s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/apigw-lambda-dynamodb-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -4456,7 +4479,7 @@ Ready.
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">terraform {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -4698,7 +4721,7 @@ resource "aws_lambda_permission" "api_gw" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl"># Input variable definitions
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl"># Input variable definitions
 
 variable "aws_region" {
   description = "AWS region for all resources."
@@ -4758,7 +4781,7 @@ variable "apigw_log_retention" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl"># Output value definitions
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl"># Output value definitions
 
 output "apigwy_url" {
   description = "URL for API Gateway stage"
@@ -4840,7 +4863,7 @@ output "apigwy_log_group" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import json
 import time
 from typing import Dict, Any
@@ -5064,7 +5087,7 @@ class TestMovieCatalogService:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import boto3
 import os
 import logging
@@ -5221,7 +5244,7 @@ def sample_movies():
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import json
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import json
 import logging
 import requests
 import boto3
@@ -5533,7 +5556,7 @@ class MovieCatalogService:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">boto3==1.34.0
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">boto3==1.34.0
 pytest==7.4.3
 pytest-asyncio==0.21.1
 requests==2.31.0
@@ -5787,7 +5810,7 @@ botocore==1.34.0</code></pre>
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        7.2s
+                                        7.4s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/apigw-http-api-lambda-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -6028,7 +6051,7 @@ Ready.
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">terraform {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -6214,7 +6237,7 @@ resource "aws_lambda_permission" "api_gw" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl"># Input variable definitions
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl"># Input variable definitions
 
 variable "aws_region" {
   description = "AWS region for all resources."
@@ -6259,7 +6282,7 @@ variable "apigw_log_retention" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl"># Output value definitions
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl"># Output value definitions
 
 output "apigwy_url" {
   description = "URL for API Gateway stage"
@@ -6338,7 +6361,7 @@ output "apigwy_url" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import json
 import time
 from typing import Dict, List
@@ -6759,7 +6782,7 @@ class TestS3Integration:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import boto3
 import os
 import logging
@@ -6892,7 +6915,7 @@ def terraform_outputs():
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import json
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import json
 import boto3
 import requests
 import os
@@ -7198,7 +7221,7 @@ class UserRegistrationService:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">boto3>=1.26.0
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">boto3>=1.26.0
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
 requests>=2.28.0
@@ -7483,7 +7506,7 @@ typing-extensions>=4.0.0</code></pre>
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        9.6s
+                                        10.4s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/dynamodb-streams-lambda-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -7716,7 +7739,7 @@ Ready.
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">terraform {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -7909,7 +7932,7 @@ output "lambda_processing_arn" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import time
 import json
 from botocore.exceptions import ClientError
@@ -8212,7 +8235,7 @@ class TestUserManagementSystem:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import os
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import os
 import pytest
 import boto3
 from botocore.exceptions import ClientError
@@ -8346,7 +8369,7 @@ def sample_user_data():
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import boto3
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import boto3
 import json
 import logging
 from typing import Dict, List, Optional, Any
@@ -8724,7 +8747,7 @@ def create_user_management_system() -> UserManagementSystem:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">boto3>=1.34.0
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">boto3>=1.34.0
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
 botocore>=1.34.0
@@ -8933,7 +8956,7 @@ typing-extensions>=4.0.0</code></pre>
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        6.4s
+                                        7.2s
                                     </span>
                                     
                                     <a href="https://github.com/aws-samples/serverless-patterns/tree/main/s3-lambda-terraform" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -9063,7 +9086,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 │   on localstack_providers_override.tf line 24, in provider "aws":
 │   24:     ce = "http://localhost:5130"
 │ 
-│ An argument named "ce" is not expected here. Did you mean "ds"?
+│ An argument named "ce" is not expected here. Did you mean "es"?
 ╵
 ╷
 │ Error: Unsupported argument
@@ -9276,7 +9299,7 @@ Ready.
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl">terraform {
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl">terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -9450,7 +9473,7 @@ output "name_of_bucket" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import json
 import time
 from app import DocumentProcessingPipeline
@@ -9676,7 +9699,7 @@ class TestDocumentProcessingPipeline:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import pytest
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import pytest
 import boto3
 import os
 import tempfile
@@ -9798,7 +9821,7 @@ def temp_file() -> Generator[str, None, None]:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">import boto3
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">import boto3
 import json
 import os
 import logging
@@ -10115,7 +10138,7 @@ class DocumentProcessingPipeline:
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">boto3==1.34.34
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">boto3==1.34.34
 pytest==7.4.4
 pytest-asyncio==0.23.4
 botocore==1.34.34</code></pre>
@@ -10323,7 +10346,7 @@ botocore==1.34.34</code></pre>
                                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
-                                        56.9s
+                                        55.9s
                                     </span>
                                     
                                     <a href="local://simple_s3_test" target="_blank" class="text-blue-400 hover:text-blue-300">
@@ -10467,7 +10490,7 @@ botocore==1.34.34</code></pre>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-hcl"># Simple S3 bucket - tflocal handles LocalStack endpoints automatically
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-hcl"># Simple S3 bucket - tflocal handles LocalStack endpoints automatically
 terraform {
   required_providers {
     aws = {
@@ -10552,7 +10575,7 @@ output "bucket_name" {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">"""Tests for simple S3 infrastructure."""
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">"""Tests for simple S3 infrastructure."""
 import pytest
 
 
@@ -10623,7 +10646,7 @@ def test_s3_list_objects(s3_client):
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">"""Pytest fixtures for S3 bucket testing."""
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">"""Pytest fixtures for S3 bucket testing."""
 import os
 import boto3
 import pytest
@@ -10658,7 +10681,7 @@ def s3_client(localstack_endpoint):
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">"""Simple S3 application code."""
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">"""Simple S3 application code."""
 import os
 import boto3
 
@@ -10706,7 +10729,7 @@ def get_test_object(bucket_name, key):
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </summary>
-                                        <pre class="!bg-slate-900 max-h-64 overflow-auto"><code class="language-python">pytest>=8.0
+                                        <pre class="!bg-slate-900 max-h-64 overflow-auto whitespace-pre-wrap break-words"><code class="language-python">pytest>=8.0
 boto3>=1.35
 </code></pre>
                                     </details>
@@ -11040,8 +11063,38 @@ bucket_name = "lsqm-test-bucket-simple"
                             
                             <tr class="hover:bg-slate-800/50 transition bg-blue-900/20">
                                 <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">b5aa050f</code>
+                                    <code class="text-sm text-slate-300">cdcdbff8</code>
                                     <span class="ml-2 text-xs text-blue-400">(current)</span>
+                                </td>
+                                <td class="px-4 py-3 text-slate-300">2026-01-10</td>
+                                <td class="px-4 py-3 text-center text-white">1</td>
+                                <td class="px-4 py-3 text-center text-green-400">-</td>
+                                <td class="px-4 py-3 text-right">
+                                    <span class="font-semibold text-green-400">
+                                        100%
+                                    </span>
+                                </td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50 transition ">
+                                <td class="px-4 py-3">
+                                    <code class="text-sm text-slate-300">90a5f889</code>
+                                    
+                                </td>
+                                <td class="px-4 py-3 text-slate-300">2026-01-11</td>
+                                <td class="px-4 py-3 text-center text-white">7</td>
+                                <td class="px-4 py-3 text-center text-green-400">-</td>
+                                <td class="px-4 py-3 text-right">
+                                    <span class="font-semibold text-red-400">
+                                        14%
+                                    </span>
+                                </td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50 transition ">
+                                <td class="px-4 py-3">
+                                    <code class="text-sm text-slate-300">b5aa050f</code>
+                                    
                                 </td>
                                 <td class="px-4 py-3 text-slate-300">2026-01-10</td>
                                 <td class="px-4 py-3 text-center text-white">1</td>
@@ -11064,21 +11117,6 @@ bucket_name = "lsqm-test-bucket-simple"
                                 <td class="px-4 py-3 text-right">
                                     <span class="font-semibold text-red-400">
                                         14%
-                                    </span>
-                                </td>
-                            </tr>
-                            
-                            <tr class="hover:bg-slate-800/50 transition ">
-                                <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">cdcdbff8</code>
-                                    
-                                </td>
-                                <td class="px-4 py-3 text-slate-300">2026-01-10</td>
-                                <td class="px-4 py-3 text-center text-white">1</td>
-                                <td class="px-4 py-3 text-center text-green-400">-</td>
-                                <td class="px-4 py-3 text-right">
-                                    <span class="font-semibold text-green-400">
-                                        100%
                                     </span>
                                 </td>
                             </tr>
@@ -11130,7 +11168,7 @@ bucket_name = "lsqm-test-bucket-simple"
                             
                             <tr class="hover:bg-slate-800/50 transition ">
                                 <td class="px-4 py-3">
-                                    <code class="text-sm text-slate-300">90a5f889</code>
+                                    <code class="text-sm text-slate-300">85b6cfea</code>
                                     
                                 </td>
                                 <td class="px-4 py-3 text-slate-300">2026-01-11</td>
@@ -11198,10 +11236,10 @@ bucket_name = "lsqm-test-bucket-simple"
             new Chart(ctx.getContext('2d'), {
                 type: 'line',
                 data: {
-                    labels: ["2026-01-10", "2026-01-11", "2026-01-10", "2026-01-10", "2026-01-11", "2026-01-11", "2026-01-11"],
+                    labels: ["2026-01-10", "2026-01-11", "2026-01-10", "2026-01-11", "2026-01-10", "2026-01-11", "2026-01-11", "2026-01-11"],
                     datasets: [{
                         label: 'Pass Rate %',
-                        data: [100.0, 14.285714285714285, 100.0, 50.0, 50.0, 16.666666666666664, 14.285714285714285],
+                        data: [100.0, 14.285714285714285, 100.0, 14.285714285714285, 50.0, 50.0, 16.666666666666664, 14.285714285714285],
                         borderColor: 'rgb(34, 197, 94)',
                         backgroundColor: 'rgba(34, 197, 94, 0.1)',
                         tension: 0.3,
