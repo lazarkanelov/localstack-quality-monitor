@@ -78,6 +78,8 @@ def generate_html_report(
         pytest_passed = pytest_results.get("passed", 0)
         pytest_failed = pytest_results.get("failed", 0)
         pytest_output = pytest_results.get("output", "")
+        individual_tests = pytest_results.get("individual_tests", [])
+        operation_results = pytest_results.get("operation_results", [])
 
         # Accumulate test totals
         total_tests += pytest_passed + pytest_failed
@@ -136,6 +138,8 @@ def generate_html_report(
                 "pytest_passed": pytest_passed,
                 "pytest_failed": pytest_failed,
                 "pytest_output": pytest_output,
+                "individual_tests": individual_tests,
+                "operation_results": operation_results,
                 "terraform_output": terraform_output,
                 "logs": container_logs,  # Full logs - no truncation
                 "terraform_files": terraform_files,
