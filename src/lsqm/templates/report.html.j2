@@ -228,19 +228,24 @@
                                 </template>
                                 <!-- Parity Indicator -->
                                 <template x-if="arch.failure_analysis && arch.failure_analysis.parity_result">
-                                    <span class="ml-2" :title="arch.failure_analysis.parity_result.has_parity ? 'Error format matches AWS' : 'Error format differs from AWS'">
-                                        <template x-if="arch.failure_analysis.parity_result.has_parity">
-                                            <svg class="w-4 h-4 text-cyan-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                                        </template>
-                                        <template x-if="!arch.failure_analysis.parity_result.has_parity">
-                                            <svg class="w-4 h-4 text-orange-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                        </template>
-                                    </span>
+                                    <template x-if="arch.failure_analysis.parity_result.has_parity">
+                                        <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-cyan-900/40 text-cyan-400 border border-cyan-800/50" title="Error format matches AWS">
+                                            <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                            Parity
+                                        </span>
+                                    </template>
+                                    <template x-if="!arch.failure_analysis.parity_result.has_parity">
+                                        <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-orange-900/40 text-orange-400 border border-orange-800/50" title="Error format differs from AWS">
+                                            <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                            No Parity
+                                        </span>
+                                    </template>
                                 </template>
                                 <!-- Not LocalStack Issue Indicator -->
                                 <template x-if="arch.failure_analysis && arch.failure_analysis.is_localstack_issue === false">
-                                    <span class="ml-2" title="Not a LocalStack issue">
-                                        <svg class="w-4 h-4 text-gray-500 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                                    <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-700/40 text-gray-400 border border-gray-600/50" title="Not a LocalStack issue - configuration or provider problem">
+                                        <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        Config
                                     </span>
                                 </template>
                             </td>
