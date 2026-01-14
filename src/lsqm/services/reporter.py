@@ -508,6 +508,44 @@ def analyze_failure(
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
 
+        # Pattern 7: AWS shared config profile issues (not LocalStack)
+        if "failed to get shared config profile" in terraform_output.lower():
+            analysis["error_message"] = (
+                "AWS provider config error: failed to get shared config profile"
+            )
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_config"
+
+        # Pattern 8: Missing source files for archive (not LocalStack)
+        if "could not archive missing directory" in terraform_output.lower():
+            dir_match = re.search(r"could not archive missing directory:\s*(\S+)", terraform_output)
+            missing_dir = dir_match.group(1) if dir_match else "unknown"
+            analysis["error_message"] = f"Missing source directory for archive: {missing_dir}"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "missing_files"
+
+        # Pattern 9: Archive creation errors (usually missing source files)
+        if "archive creation error" in terraform_output.lower() and not analysis.get("error_message"):
+            analysis["error_message"] = "Archive creation error - missing source files"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "missing_files"
+
+        # Pattern 10: Terraform module version constraints (not LocalStack)
+        if "unresolvable module version constraint" in terraform_output.lower():
+            module_match = re.search(r'module\s+"([^"]+)"', terraform_output)
+            module_name = module_match.group(1) if module_match else "unknown"
+            analysis["error_message"] = f"Terraform module version constraint error: {module_name}"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "terraform_registry"
+
+        # Pattern 11: Terraform init failures (usually not LocalStack)
+        if "init failed" in terraform_output.lower():
+            if analysis.get("is_localstack_issue") is not False:  # Don't override if already set
+                analysis["is_localstack_issue"] = False
+                analysis["category"] = "terraform_init"
+                if not analysis.get("error_message"):
+                    analysis["error_message"] = "Terraform init failed"
+
     # === DETECT AFFECTED SERVICE ===
     combined = f"{terraform_output}\n{container_logs}".lower()
     service_patterns = [
