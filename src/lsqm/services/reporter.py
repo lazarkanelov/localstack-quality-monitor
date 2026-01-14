@@ -457,6 +457,28 @@ def analyze_failure(
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
 
+        # Pattern 4: Lambda runtime validation errors (Terraform provider issue, not LocalStack)
+        if "expected runtime to be one of" in terraform_output:
+            runtime_match = re.search(r'got\s+(\S+)', terraform_output)
+            runtime = runtime_match.group(1) if runtime_match else "unknown"
+            analysis["error_message"] = f"Unsupported Lambda runtime in Terraform provider validation: {runtime}"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_version"
+
+        # Pattern 5: tflocal override issues (tflocal bug, not LocalStack)
+        if "Unsupported argument" in terraform_output and "localstack_providers_override.tf" in terraform_output:
+            arg_match = re.search(r'argument named "(\w+)"', terraform_output)
+            arg_name = arg_match.group(1) if arg_match else "unknown"
+            analysis["error_message"] = f"tflocal generated unsupported provider endpoint: {arg_name}"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "tflocal_bug"
+
+        # Pattern 6: Context variable issues (module configuration, not LocalStack)
+        if "var.context" in terraform_output and "Unsupported attribute" in terraform_output:
+            analysis["error_message"] = "Module requires external context object (null-label pattern)"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
     # === DETECT AFFECTED SERVICE ===
     combined = f"{terraform_output}\n{container_logs}".lower()
     service_patterns = [

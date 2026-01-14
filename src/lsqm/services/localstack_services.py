@@ -196,4 +196,9 @@ def is_standalone_architecture(tf_content: str) -> tuple[bool, str]:
     if problematic_data:
         return False, f"Requires external state: {', '.join(problematic_data)}"
 
+    # Check for context variable pattern (Cloud Posse null-label modules)
+    # These modules expect a context object passed from parent module
+    if re.search(r'\bvar\.context\.\w+', tf_content):
+        return False, "Requires external context object (null-label pattern)"
+
     return True, ""

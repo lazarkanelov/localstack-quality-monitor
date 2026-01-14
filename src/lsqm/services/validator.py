@@ -4,6 +4,7 @@ import asyncio
 import atexit
 import json
 import logging
+import re
 import shutil
 import signal
 import tempfile
@@ -352,6 +353,60 @@ async def _wait_for_health(endpoint: str, timeout: int = 60) -> bool:
     return False
 
 
+# Endpoints that tflocal may add but are not supported by the Terraform AWS provider
+UNSUPPORTED_TFLOCAL_ENDPOINTS = {
+    "bedrock",
+    "bedrockagent",
+    "bedrockruntime",
+    "verifiedpermissions",
+}
+
+
+def _cleanup_tflocal_overrides(work_dir: Path) -> None:
+    """Remove unsupported endpoints from tflocal's provider override file.
+
+    tflocal generates localstack_providers_override.tf with endpoints for all
+    AWS services, but some (like bedrock) are not recognized by the Terraform
+    AWS provider, causing validation errors.
+    """
+    override_file = work_dir / "localstack_providers_override.tf"
+    if not override_file.exists():
+        return
+
+    content = override_file.read_text()
+    original_content = content
+
+    for endpoint in UNSUPPORTED_TFLOCAL_ENDPOINTS:
+        # Remove lines like: bedrock = "http://localhost:5130"
+        pattern = rf'^\s*{endpoint}\s*=\s*"[^"]+"\s*\n'
+        content = re.sub(pattern, '', content, flags=re.MULTILINE)
+
+    if content != original_content:
+        override_file.write_text(content)
+
+
+def _normalize_provider_versions(work_dir: Path) -> None:
+    """Update AWS provider version constraints to support modern Lambda runtimes.
+
+    Older AWS provider versions (< 5.31) don't support modern Lambda runtimes
+    like python3.10, python3.11, python3.12, nodejs18.x, nodejs20.x, etc.
+    This causes Terraform validation errors before LocalStack is even involved.
+    """
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+
+        # Match version constraints in required_providers blocks
+        # Examples: version = "~> 4.0", version = "~> 5.0", version = ">= 4.0"
+        updated = re.sub(
+            r'(version\s*=\s*")[~>= ]*[45]\.[0-9]+(\.[0-9]+)?(")',
+            r'\g<1>>= 5.31\g<3>',
+            content
+        )
+
+        if updated != content:
+            tf_file.write_text(updated)
+
+
 async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> TerraformApplyResult:
     """Run tflocal init and apply."""
     import os
@@ -374,6 +429,9 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
         "LOCALSTACK_ENDPOINT": endpoint,  # For backward compatibility
     })
 
+    # Normalize provider versions before init to support modern Lambda runtimes
+    _normalize_provider_versions(work_dir)
+
     try:
         # tflocal init
         proc = await asyncio.create_subprocess_exec(
@@ -390,6 +448,9 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
                 success=False,
                 logs=f"Init failed:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
             )
+
+        # Clean up unsupported endpoints from tflocal's generated override file
+        _cleanup_tflocal_overrides(work_dir)
 
         # tflocal apply
         proc = await asyncio.create_subprocess_exec(
