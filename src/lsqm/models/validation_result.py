@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 
 class ValidationStatus(str, Enum):
@@ -45,6 +46,73 @@ class TerraformApplyResult:
 
 
 @dataclass
+class TestResult:
+    """Individual test result from pytest output."""
+
+    test_name: str  # e.g., "test_put_object"
+    status: Literal["passed", "failed", "skipped", "error"]
+    duration: float = 0.0
+    error_message: str | None = None
+    aws_operations: list[str] = field(default_factory=list)  # e.g., ["s3:PutObject"]
+
+    def to_dict(self) -> dict:
+        """Serialize to dictionary."""
+        return {
+            "test_name": self.test_name,
+            "status": self.status,
+            "duration": self.duration,
+            "error_message": self.error_message,
+            "aws_operations": self.aws_operations,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "TestResult":
+        """Deserialize from dictionary."""
+        return cls(
+            test_name=data["test_name"],
+            status=data["status"],
+            duration=data.get("duration", 0.0),
+            error_message=data.get("error_message"),
+            aws_operations=data.get("aws_operations", []),
+        )
+
+
+@dataclass
+class OperationResult:
+    """Result for a specific AWS API operation."""
+
+    operation: str  # e.g., "s3:PutObject"
+    service: str  # e.g., "s3"
+    succeeded: bool
+    test_name: str  # Which test exercised this
+    error_code: str | None = None
+    error_message: str | None = None
+
+    def to_dict(self) -> dict:
+        """Serialize to dictionary."""
+        return {
+            "operation": self.operation,
+            "service": self.service,
+            "succeeded": self.succeeded,
+            "test_name": self.test_name,
+            "error_code": self.error_code,
+            "error_message": self.error_message,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "OperationResult":
+        """Deserialize from dictionary."""
+        return cls(
+            operation=data["operation"],
+            service=data["service"],
+            succeeded=data["succeeded"],
+            test_name=data["test_name"],
+            error_code=data.get("error_code"),
+            error_message=data.get("error_message"),
+        )
+
+
+@dataclass
 class PytestResult:
     """Result of pytest execution."""
 
@@ -53,6 +121,8 @@ class PytestResult:
     failed: int
     skipped: int = 0
     output: str = ""
+    individual_tests: list[TestResult] = field(default_factory=list)
+    operation_results: list[OperationResult] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         """Serialize to dictionary."""
@@ -62,6 +132,8 @@ class PytestResult:
             "failed": self.failed,
             "skipped": self.skipped,
             "output": self.output,
+            "individual_tests": [t.to_dict() for t in self.individual_tests],
+            "operation_results": [o.to_dict() for o in self.operation_results],
         }
 
     @classmethod
@@ -73,6 +145,12 @@ class PytestResult:
             failed=data.get("failed", 0),
             skipped=data.get("skipped", 0),
             output=data.get("output", ""),
+            individual_tests=[
+                TestResult.from_dict(t) for t in data.get("individual_tests", [])
+            ],
+            operation_results=[
+                OperationResult.from_dict(o) for o in data.get("operation_results", [])
+            ],
         )
 
 

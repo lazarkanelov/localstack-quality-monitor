@@ -8,6 +8,8 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from lsqm.services.parity_checker import analyze_error_parity, extract_error_details
+
 
 def generate_html_report(
     run_data: dict,
@@ -529,6 +531,27 @@ def analyze_failure(
         not_impl = re.search(r"not\s+implemented[^\n]*", container_logs, re.IGNORECASE)
         if not_impl:
             analysis["not_implemented"] = not_impl.group(0).strip()
+
+    # === ERROR MESSAGE PARITY ANALYSIS ===
+    # Check if LocalStack error messages match AWS format
+    if analysis.get("aws_error_code") and analysis.get("is_localstack_issue"):
+        error_code = analysis["aws_error_code"]
+        error_msg = analysis.get("error_message", "")
+
+        # Try to extract more detailed error info from combined output
+        combined_output = f"{terraform_output}\n{container_logs}"
+        error_details = extract_error_details(combined_output)
+
+        # Use extracted message if available, otherwise use what we have
+        message_to_check = error_details.get("error_message") or error_msg
+
+        if message_to_check:
+            parity_result = analyze_error_parity(
+                error_code=error_code,
+                localstack_message=message_to_check,
+            )
+            analysis["parity_result"] = parity_result.to_dict()
+            analysis["has_error_parity"] = parity_result.has_parity
 
     return analysis
 

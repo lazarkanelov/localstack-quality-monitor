@@ -14,11 +14,14 @@ from pathlib import Path
 import docker
 
 from lsqm.models import (
+    OperationResult,
     PytestResult,
     TerraformApplyResult,
+    TestResult,
     ValidationResult,
     ValidationStatus,
 )
+from lsqm.models.operation_coverage import map_test_to_operations
 
 # Track active containers for cleanup
 _active_containers: list = []
@@ -519,6 +522,112 @@ async def _run_terraform_destroy(work_dir: Path, endpoint: str) -> None:
         pass
 
 
+def _parse_pytest_verbose_output(output: str) -> list[TestResult]:
+    """Parse pytest -v output to extract individual test results.
+
+    Pytest verbose output format:
+    test_app.py::test_put_object PASSED                      [ 20%]
+    test_app.py::test_get_object FAILED                      [ 40%]
+
+    Args:
+        output: Full pytest stdout output
+
+    Returns:
+        List of TestResult for each individual test
+    """
+    results = []
+
+    # Pattern to match test lines: filename::test_name STATUS [percentage or duration]
+    pattern = re.compile(
+        r'^(.+?)::(\w+)\s+(PASSED|FAILED|SKIPPED|ERROR)(?:\s+\[([^\]]+)\])?',
+        re.MULTILINE
+    )
+
+    for match in pattern.finditer(output):
+        _filename = match.group(1)
+        test_name = match.group(2)
+        status = match.group(3).lower()
+        duration_str = match.group(4)
+
+        # Parse duration if available (e.g., "0.23s")
+        duration = 0.0
+        if duration_str and 's' in duration_str:
+            try:
+                duration = float(duration_str.replace('s', '').strip())
+            except ValueError:
+                pass
+
+        # Extract error message for failed tests
+        error_message = None
+        if status == "failed":
+            error_message = _extract_test_error(output, test_name)
+
+        # Map test name to AWS operations
+        aws_operations = map_test_to_operations(test_name)
+
+        results.append(TestResult(
+            test_name=test_name,
+            status=status,
+            duration=duration,
+            error_message=error_message,
+            aws_operations=aws_operations,
+        ))
+
+    return results
+
+
+def _extract_test_error(output: str, test_name: str) -> str | None:
+    """Extract error details for a specific failed test.
+
+    Args:
+        output: Full pytest output
+        test_name: Name of the failed test
+
+    Returns:
+        Error message excerpt or None
+    """
+    # Look for FAILURES section with this test
+    # Pattern: _____ test_name _____
+    pattern = rf'_{3,}\s+{re.escape(test_name)}\s+_{3,}(.*?)(?=_{3,}|PASSED|FAILED|={3,}|$)'
+    match = re.search(pattern, output, re.DOTALL)
+    if match:
+        error_section = match.group(1).strip()
+        # Extract the actual error message (last few lines usually)
+        lines = [line.strip() for line in error_section.split('\n') if line.strip()]
+        # Take last 5 non-empty lines
+        error_lines = lines[-5:] if len(lines) > 5 else lines
+        return '\n'.join(error_lines)[:500]  # Limit length
+
+    return None
+
+
+def _build_operation_results(test_results: list[TestResult]) -> list[OperationResult]:
+    """Build operation-level results from individual test results.
+
+    Args:
+        test_results: List of individual test results
+
+    Returns:
+        List of OperationResult for each AWS operation tested
+    """
+    operation_results = []
+
+    for test in test_results:
+        for operation in test.aws_operations:
+            # Extract service from operation (e.g., "s3" from "s3:PutObject")
+            service = operation.split(":")[0] if ":" in operation else operation
+
+            operation_results.append(OperationResult(
+                operation=operation,
+                service=service,
+                succeeded=(test.status == "passed"),
+                test_name=test.test_name,
+                error_message=test.error_message if test.status == "failed" else None,
+            ))
+
+    return operation_results
+
+
 async def _run_pytest(work_dir: Path, endpoint: str, timeout: int = 60) -> PytestResult:
     """Run pytest on test files."""
     import os
@@ -544,7 +653,7 @@ async def _run_pytest(work_dir: Path, endpoint: str, timeout: int = 60) -> Pytes
             )
             await asyncio.wait_for(proc.communicate(), timeout=60)
 
-        # Run pytest
+        # Run pytest with verbose output for individual test parsing
         proc = await asyncio.create_subprocess_exec(
             "pytest", "test_app.py", "-v", "--tb=short", f"--timeout={timeout}",
             cwd=work_dir,
@@ -556,11 +665,24 @@ async def _run_pytest(work_dir: Path, endpoint: str, timeout: int = 60) -> Pytes
 
         output = stdout.decode()
 
-        # Parse pytest output
-        passed = output.count(" passed")
-        failed = output.count(" failed")
-        skipped = output.count(" skipped")
-        total = passed + failed + skipped
+        # Parse individual test results from verbose output
+        individual_tests = _parse_pytest_verbose_output(output)
+
+        # Build operation-level results
+        operation_results = _build_operation_results(individual_tests)
+
+        # Calculate aggregate counts from individual results
+        if individual_tests:
+            passed = sum(1 for t in individual_tests if t.status == "passed")
+            failed = sum(1 for t in individual_tests if t.status == "failed")
+            skipped = sum(1 for t in individual_tests if t.status == "skipped")
+            total = len(individual_tests)
+        else:
+            # Fallback to simple counting if parsing fails
+            passed = output.count(" passed")
+            failed = output.count(" failed")
+            skipped = output.count(" skipped")
+            total = passed + failed + skipped
 
         return PytestResult(
             total=total,
@@ -568,6 +690,8 @@ async def _run_pytest(work_dir: Path, endpoint: str, timeout: int = 60) -> Pytes
             failed=failed,
             skipped=skipped,
             output=output,
+            individual_tests=individual_tests,
+            operation_results=operation_results,
         )
 
     except TimeoutError:
