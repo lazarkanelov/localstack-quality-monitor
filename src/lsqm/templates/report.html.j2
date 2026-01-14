@@ -532,6 +532,40 @@
                                 </div>
                             </template>
 
+                            <!-- Raw Error Output (always visible for failed architectures) -->
+                            <template x-if="selectedArch.status !== 'PASSED' && (selectedArch.terraform_output || selectedArch.logs)">
+                                <div class="bg-red-950/20 border border-red-900/40 rounded-xl p-4">
+                                    <h3 class="text-sm font-medium text-red-400 mb-3 flex items-center">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        Raw Error Output
+                                    </h3>
+
+                                    <!-- Terraform Output -->
+                                    <div x-show="selectedArch.terraform_output" class="mb-4">
+                                        <div class="text-xs font-medium text-dark-400 mb-2 flex items-center">
+                                            <svg class="w-4 h-4 mr-1.5 text-purple-400" fill="currentColor" viewBox="0 0 24 24"><path d="M1 0l4.2 2.4v4.8L1 4.8zm6.6 3.8l4.2 2.4v4.8l-4.2-2.4zm-6.6 7l4.2 2.4v4.8L1 15.6zm6.6 3.8l4.2 2.4v4.8l-4.2-2.4z"/></svg>
+                                            Terraform Output
+                                        </div>
+                                        <pre class="bg-dark-950 text-red-300 p-3 rounded-lg text-xs overflow-x-auto max-h-64 overflow-y-auto border border-dark-700 whitespace-pre-wrap break-words"><code x-text="selectedArch.terraform_output"></code></pre>
+                                    </div>
+
+                                    <!-- Container Logs (show last 2000 chars if long) -->
+                                    <div x-show="selectedArch.logs">
+                                        <div class="text-xs font-medium text-dark-400 mb-2 flex items-center">
+                                            <svg class="w-4 h-4 mr-1.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                                            LocalStack Container Logs
+                                            <span class="ml-2 text-dark-500" x-show="selectedArch.logs && selectedArch.logs.length > 2000">(truncated - see full logs below)</span>
+                                        </div>
+                                        <pre class="bg-dark-950 text-dark-300 p-3 rounded-lg text-xs overflow-x-auto max-h-64 overflow-y-auto border border-dark-700 whitespace-pre-wrap break-words"><code x-text="selectedArch.logs && selectedArch.logs.length > 2000 ? selectedArch.logs.slice(-2000) : selectedArch.logs"></code></pre>
+                                    </div>
+
+                                    <!-- No output message -->
+                                    <div x-show="!selectedArch.terraform_output && !selectedArch.logs" class="text-sm text-dark-500 italic">
+                                        No error output captured for this run.
+                                    </div>
+                                </div>
+                            </template>
+
                             <!-- Steps to Reproduce (for failed architectures) -->
                             <template x-if="selectedArch.status !== 'PASSED'">
                                 <div class="bg-dark-800 rounded-xl p-4 border border-dark-700">
