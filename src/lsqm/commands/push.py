@@ -18,7 +18,9 @@ def push(ctx, skip_issues, message):
         return
 
     result = _push_impl(ctx, skip_issues=skip_issues, message=message)
-    click.echo(f"Commit: {result.get('commit_sha', 'none')[:7]} \"{result.get('commit_message', '')}\"")
+    click.echo(
+        f'Commit: {result.get("commit_sha", "none")[:7]} "{result.get("commit_message", "")}"'
+    )
     if result.get("issues_created", 0) > 0:
         click.echo(f"Created {result['issues_created']} GitHub issues for regressions")
     click.echo("Push complete.")

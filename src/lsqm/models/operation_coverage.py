@@ -240,10 +240,7 @@ class ServiceCoverage:
     @classmethod
     def from_dict(cls, data: dict) -> "ServiceCoverage":
         """Deserialize from dictionary."""
-        ops = {
-            k: OperationCoverage.from_dict(v)
-            for k, v in data.get("operations", {}).items()
-        }
+        ops = {k: OperationCoverage.from_dict(v) for k, v in data.get("operations", {}).items()}
         return cls(
             service=data["service"],
             operations=ops,

@@ -19,14 +19,14 @@ def report(ctx, output, run_id):
 
     result = _report_impl(ctx, output_dir=output, run_id=run_id)
     click.echo(f"Report generated: {result['path']}")
-    click.echo(f"  - Summary: {result['total']} architectures, {result['pass_rate']:.0f}% pass rate")
+    click.echo(
+        f"  - Summary: {result['total']} architectures, {result['pass_rate']:.0f}% pass rate"
+    )
     if result.get("regressions", 0) > 0:
         click.echo(f"  - Regressions: {result['regressions']} detected")
 
 
-def _report_impl(
-    ctx, output_dir: str = "reports/latest", run_id: str = "latest"
-) -> dict:
+def _report_impl(ctx, output_dir: str = "reports/latest", run_id: str = "latest") -> dict:
     """Implementation of report logic."""
     from pathlib import Path
 

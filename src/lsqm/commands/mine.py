@@ -122,7 +122,9 @@ def _mine_impl(ctx, sources: tuple = (), limit: int = 0) -> dict:
             arch.skipped = True
             arch.skip_reason = f"Not standalone: {standalone_reason}"
             results["skipped_non_standalone"] += 1
-            click.echo(f"  SKIP (non-standalone): {arch.name or arch.hash[:8]} - {standalone_reason}")
+            click.echo(
+                f"  SKIP (non-standalone): {arch.name or arch.hash[:8]} - {standalone_reason}"
+            )
             continue  # Don't save non-standalone architectures
 
         # Check for unsupported services

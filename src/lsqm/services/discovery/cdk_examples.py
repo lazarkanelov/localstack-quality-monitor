@@ -79,11 +79,13 @@ def _find_cdk_examples(repo, logger: logging.Logger | None) -> list[dict]:
                 lang_contents = repo.get_contents(lang_dir)
                 for content in lang_contents:
                     if content.type == "dir":
-                        examples.append({
-                            "path": content.path,
-                            "name": content.name,
-                            "language": lang_dir,
-                        })
+                        examples.append(
+                            {
+                                "path": content.path,
+                                "name": content.name,
+                                "language": lang_dir,
+                            }
+                        )
             except Exception:
                 pass
 

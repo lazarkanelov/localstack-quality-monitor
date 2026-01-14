@@ -30,6 +30,7 @@ def compare(ctx, run_id, current, output_format):
 
     if output_format == "json":
         import json
+
         click.echo(json.dumps(result, indent=2))
     else:
         _print_comparison(result)
@@ -62,8 +63,12 @@ def _compare_impl(ctx, current_run: str = "latest", previous_run: str = "previou
         click.echo(f"Previous run not found: {previous_run}")
         return {"error": "Previous run not found"}
 
-    click.echo(f"  Current: {current_data.get('run_id', current_run)[:8]} ({current_data.get('started_at', 'unknown')[:10]})")
-    click.echo(f"  Previous: {previous_data.get('run_id', previous_run)[:8]} ({previous_data.get('started_at', 'unknown')[:10]})")
+    click.echo(
+        f"  Current: {current_data.get('run_id', current_run)[:8]} ({current_data.get('started_at', 'unknown')[:10]})"
+    )
+    click.echo(
+        f"  Previous: {previous_data.get('run_id', previous_run)[:8]} ({previous_data.get('started_at', 'unknown')[:10]})"
+    )
 
     # Compare runs
     result = compare_runs(
@@ -86,12 +91,16 @@ def _print_comparison(result: dict) -> None:
     if regressions:
         click.echo(f"Regressions ({len(regressions)}):")
         for r in regressions:
-            click.echo(f"  - {r['arch_hash'][:8]} {r.get('name', '')}: {r['from_status']} → {r['to_status']}")
+            click.echo(
+                f"  - {r['arch_hash'][:8]} {r.get('name', '')}: {r['from_status']} → {r['to_status']}"
+            )
 
     if fixes:
         click.echo(f"Fixes ({len(fixes)}):")
         for f in fixes:
-            click.echo(f"  - {f['arch_hash'][:8]} {f.get('name', '')}: {f['from_status']} → {f['to_status']}")
+            click.echo(
+                f"  - {f['arch_hash'][:8]} {f.get('name', '')}: {f['from_status']} → {f['to_status']}"
+            )
 
     click.echo("")
     click.echo(f"Summary: {len(regressions)} regressions, {len(fixes)} fixes")

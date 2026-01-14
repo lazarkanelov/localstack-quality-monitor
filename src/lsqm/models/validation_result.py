@@ -145,9 +145,7 @@ class PytestResult:
             failed=data.get("failed", 0),
             skipped=data.get("skipped", 0),
             output=data.get("output", ""),
-            individual_tests=[
-                TestResult.from_dict(t) for t in data.get("individual_tests", [])
-            ],
+            individual_tests=[TestResult.from_dict(t) for t in data.get("individual_tests", [])],
             operation_results=[
                 OperationResult.from_dict(o) for o in data.get("operation_results", [])
             ],
@@ -220,7 +218,9 @@ class ValidationResult:
         )
 
     @classmethod
-    def create_timeout(cls, arch_hash: str, run_id: str, started_at: datetime) -> "ValidationResult":
+    def create_timeout(
+        cls, arch_hash: str, run_id: str, started_at: datetime
+    ) -> "ValidationResult":
         """Create a TIMEOUT result."""
         now = datetime.utcnow()
         return cls(

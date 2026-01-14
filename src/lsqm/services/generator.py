@@ -256,24 +256,28 @@ def generate_test_apps(
             if result.get("success"):
                 generated_count += 1
 
-            results.append({
-                "hash": arch_hash,
-                "name": name,
-                "success": result.get("success", False),
-                "tokens": tokens,
-                "error": result.get("error"),
-            })
+            results.append(
+                {
+                    "hash": arch_hash,
+                    "name": name,
+                    "success": result.get("success", False),
+                    "tokens": tokens,
+                    "error": result.get("error"),
+                }
+            )
 
         except Exception as e:
             if logger:
                 logger.error(f"Generation failed for {arch_hash}: {e}")
-            results.append({
-                "hash": arch_hash,
-                "name": name,
-                "success": False,
-                "tokens": 0,
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "hash": arch_hash,
+                    "name": name,
+                    "success": False,
+                    "tokens": 0,
+                    "error": str(e),
+                }
+            )
 
     remaining = len(architectures) - len(results)
 
@@ -358,10 +362,7 @@ def _generate_single_app(
     # Add tfvars section to prompt if needed
     if tfvars_section:
         # Insert before "## Output Format"
-        prompt = prompt.replace(
-            "## Output Format",
-            tfvars_section + "\n\n## Output Format"
-        )
+        prompt = prompt.replace("## Output Format", tfvars_section + "\n\n## Output Format")
 
     # Retry loop for API calls
     retries = 0
@@ -379,21 +380,33 @@ def _generate_single_app(
             retries += 1
             backoff = INITIAL_BACKOFF * (2 ** (retries - 1))
             if logger:
-                logger.warning(f"Claude API rate limited, waiting {backoff}s (retry {retries}/{MAX_RETRIES})")
+                logger.warning(
+                    f"Claude API rate limited, waiting {backoff}s (retry {retries}/{MAX_RETRIES})"
+                )
             if retries < MAX_RETRIES:
                 time.sleep(backoff)
             else:
-                return {"success": False, "error": f"Rate limit exceeded after {MAX_RETRIES} retries", "tokens": 0}
+                return {
+                    "success": False,
+                    "error": f"Rate limit exceeded after {MAX_RETRIES} retries",
+                    "tokens": 0,
+                }
 
         except APIConnectionError as e:
             retries += 1
             backoff = INITIAL_BACKOFF * (2 ** (retries - 1))
             if logger:
-                logger.warning(f"Claude API connection error, waiting {backoff}s (retry {retries}/{MAX_RETRIES})")
+                logger.warning(
+                    f"Claude API connection error, waiting {backoff}s (retry {retries}/{MAX_RETRIES})"
+                )
             if retries < MAX_RETRIES:
                 time.sleep(backoff)
             else:
-                return {"success": False, "error": f"Connection failed after {MAX_RETRIES} retries: {e}", "tokens": 0}
+                return {
+                    "success": False,
+                    "error": f"Connection failed after {MAX_RETRIES} retries: {e}",
+                    "tokens": 0,
+                }
 
         except APIError as e:
             # Non-retryable API errors (e.g., invalid request, authentication)

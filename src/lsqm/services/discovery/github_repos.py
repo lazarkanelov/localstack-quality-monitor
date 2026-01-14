@@ -161,7 +161,7 @@ def _scan_path_for_terraform(
                         # Use relative path from scan root
                         rel_path = item.path
                         if path and path != ".":
-                            rel_path = item.path[len(path):].lstrip("/")
+                            rel_path = item.path[len(path) :].lstrip("/")
                         tf_files[rel_path or item.name] = content
                     except Exception:
                         pass
@@ -195,7 +195,7 @@ def _scan_path_for_terraform(
         services = list(extract_services_from_terraform(all_content))
 
         # Count resources
-        resource_count = all_content.count("resource \"aws_")
+        resource_count = all_content.count('resource "aws_')
 
         if resource_count == 0:
             return None

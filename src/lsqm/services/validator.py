@@ -300,7 +300,9 @@ async def _validate_single(
             duration_seconds=(datetime.utcnow() - started_at).total_seconds(),
             terraform_apply=tf_result,
             pytest_results=pytest_result,
-            container_logs=_get_container_logs(container) if status != ValidationStatus.PASSED else "",
+            container_logs=_get_container_logs(container)
+            if status != ValidationStatus.PASSED
+            else "",
         )
 
     except TimeoutError:
@@ -382,7 +384,7 @@ def _cleanup_tflocal_overrides(work_dir: Path) -> None:
     for endpoint in UNSUPPORTED_TFLOCAL_ENDPOINTS:
         # Remove lines like: bedrock = "http://localhost:5130"
         pattern = rf'^\s*{endpoint}\s*=\s*"[^"]+"\s*\n'
-        content = re.sub(pattern, '', content, flags=re.MULTILINE)
+        content = re.sub(pattern, "", content, flags=re.MULTILINE)
 
     if content != original_content:
         override_file.write_text(content)
@@ -401,9 +403,7 @@ def _normalize_provider_versions(work_dir: Path) -> None:
         # Match version constraints in required_providers blocks
         # Examples: version = "~> 4.0", version = "~> 5.0", version = ">= 4.0"
         updated = re.sub(
-            r'(version\s*=\s*")[~>= ]*[45]\.[0-9]+(\.[0-9]+)?(")',
-            r'\g<1>>= 5.31\g<3>',
-            content
+            r'(version\s*=\s*")[~>= ]*[45]\.[0-9]+(\.[0-9]+)?(")', r"\g<1>>= 5.31\g<3>", content
         )
 
         if updated != content:
@@ -423,14 +423,16 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
     # Start with current environment and add our variables
     # tflocal uses LOCALSTACK_HOSTNAME and EDGE_PORT (not LOCALSTACK_ENDPOINT)
     env = os.environ.copy()
-    env.update({
-        "AWS_ACCESS_KEY_ID": "test",
-        "AWS_SECRET_ACCESS_KEY": "test",
-        "AWS_DEFAULT_REGION": "us-east-1",
-        "LOCALSTACK_HOSTNAME": hostname,
-        "EDGE_PORT": port,
-        "LOCALSTACK_ENDPOINT": endpoint,  # For backward compatibility
-    })
+    env.update(
+        {
+            "AWS_ACCESS_KEY_ID": "test",
+            "AWS_SECRET_ACCESS_KEY": "test",
+            "AWS_DEFAULT_REGION": "us-east-1",
+            "LOCALSTACK_HOSTNAME": hostname,
+            "EDGE_PORT": port,
+            "LOCALSTACK_ENDPOINT": endpoint,  # For backward compatibility
+        }
+    )
 
     # Normalize provider versions before init to support modern Lambda runtimes
     _normalize_provider_versions(work_dir)
@@ -438,7 +440,8 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
     try:
         # tflocal init
         proc = await asyncio.create_subprocess_exec(
-            "tflocal", "init",
+            "tflocal",
+            "init",
             cwd=work_dir,
             env=env,
             stdout=asyncio.subprocess.PIPE,
@@ -457,7 +460,10 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
 
         # tflocal apply
         proc = await asyncio.create_subprocess_exec(
-            "tflocal", "apply", "-auto-approve", "-input=false",
+            "tflocal",
+            "apply",
+            "-auto-approve",
+            "-input=false",
             cwd=work_dir,
             env=env,
             stdout=asyncio.subprocess.PIPE,
@@ -500,18 +506,23 @@ async def _run_terraform_destroy(work_dir: Path, endpoint: str) -> None:
     port = str(parsed.port or 4566)
 
     env = os.environ.copy()
-    env.update({
-        "AWS_ACCESS_KEY_ID": "test",
-        "AWS_SECRET_ACCESS_KEY": "test",
-        "AWS_DEFAULT_REGION": "us-east-1",
-        "LOCALSTACK_HOSTNAME": hostname,
-        "EDGE_PORT": port,
-        "LOCALSTACK_ENDPOINT": endpoint,
-    })
+    env.update(
+        {
+            "AWS_ACCESS_KEY_ID": "test",
+            "AWS_SECRET_ACCESS_KEY": "test",
+            "AWS_DEFAULT_REGION": "us-east-1",
+            "LOCALSTACK_HOSTNAME": hostname,
+            "EDGE_PORT": port,
+            "LOCALSTACK_ENDPOINT": endpoint,
+        }
+    )
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            "tflocal", "destroy", "-auto-approve", "-input=false",
+            "tflocal",
+            "destroy",
+            "-auto-approve",
+            "-input=false",
             cwd=work_dir,
             env=env,
             stdout=asyncio.subprocess.PIPE,
@@ -539,8 +550,7 @@ def _parse_pytest_verbose_output(output: str) -> list[TestResult]:
 
     # Pattern to match test lines: filename::test_name STATUS [percentage or duration]
     pattern = re.compile(
-        r'^(.+?)::(\w+)\s+(PASSED|FAILED|SKIPPED|ERROR)(?:\s+\[([^\]]+)\])?',
-        re.MULTILINE
+        r"^(.+?)::(\w+)\s+(PASSED|FAILED|SKIPPED|ERROR)(?:\s+\[([^\]]+)\])?", re.MULTILINE
     )
 
     for match in pattern.finditer(output):
@@ -551,9 +561,9 @@ def _parse_pytest_verbose_output(output: str) -> list[TestResult]:
 
         # Parse duration if available (e.g., "0.23s")
         duration = 0.0
-        if duration_str and 's' in duration_str:
+        if duration_str and "s" in duration_str:
             try:
-                duration = float(duration_str.replace('s', '').strip())
+                duration = float(duration_str.replace("s", "").strip())
             except ValueError:
                 pass
 
@@ -565,13 +575,15 @@ def _parse_pytest_verbose_output(output: str) -> list[TestResult]:
         # Map test name to AWS operations
         aws_operations = map_test_to_operations(test_name)
 
-        results.append(TestResult(
-            test_name=test_name,
-            status=status,
-            duration=duration,
-            error_message=error_message,
-            aws_operations=aws_operations,
-        ))
+        results.append(
+            TestResult(
+                test_name=test_name,
+                status=status,
+                duration=duration,
+                error_message=error_message,
+                aws_operations=aws_operations,
+            )
+        )
 
     return results
 
@@ -588,15 +600,15 @@ def _extract_test_error(output: str, test_name: str) -> str | None:
     """
     # Look for FAILURES section with this test
     # Pattern: _____ test_name _____
-    pattern = rf'_{3,}\s+{re.escape(test_name)}\s+_{3,}(.*?)(?=_{3,}|PASSED|FAILED|={3,}|$)'
+    pattern = rf"_{(3,)}\s+{re.escape(test_name)}\s+_{(3,)}(.*?)(?=_{(3,)}|PASSED|FAILED|={(3,)}|$)"
     match = re.search(pattern, output, re.DOTALL)
     if match:
         error_section = match.group(1).strip()
         # Extract the actual error message (last few lines usually)
-        lines = [line.strip() for line in error_section.split('\n') if line.strip()]
+        lines = [line.strip() for line in error_section.split("\n") if line.strip()]
         # Take last 5 non-empty lines
         error_lines = lines[-5:] if len(lines) > 5 else lines
-        return '\n'.join(error_lines)[:500]  # Limit length
+        return "\n".join(error_lines)[:500]  # Limit length
 
     return None
 
@@ -617,13 +629,15 @@ def _build_operation_results(test_results: list[TestResult]) -> list[OperationRe
             # Extract service from operation (e.g., "s3" from "s3:PutObject")
             service = operation.split(":")[0] if ":" in operation else operation
 
-            operation_results.append(OperationResult(
-                operation=operation,
-                service=service,
-                succeeded=(test.status == "passed"),
-                test_name=test.test_name,
-                error_message=test.error_message if test.status == "failed" else None,
-            ))
+            operation_results.append(
+                OperationResult(
+                    operation=operation,
+                    service=service,
+                    succeeded=(test.status == "passed"),
+                    test_name=test.test_name,
+                    error_message=test.error_message if test.status == "failed" else None,
+                )
+            )
 
     return operation_results
 
@@ -633,19 +647,25 @@ async def _run_pytest(work_dir: Path, endpoint: str, timeout: int = 60) -> Pytes
     import os
 
     env = os.environ.copy()
-    env.update({
-        "LOCALSTACK_ENDPOINT": endpoint,
-        "AWS_ACCESS_KEY_ID": "test",
-        "AWS_SECRET_ACCESS_KEY": "test",
-        "AWS_DEFAULT_REGION": "us-east-1",
-    })
+    env.update(
+        {
+            "LOCALSTACK_ENDPOINT": endpoint,
+            "AWS_ACCESS_KEY_ID": "test",
+            "AWS_SECRET_ACCESS_KEY": "test",
+            "AWS_DEFAULT_REGION": "us-east-1",
+        }
+    )
 
     try:
         # Install requirements
         req_file = work_dir / "requirements.txt"
         if req_file.exists():
             proc = await asyncio.create_subprocess_exec(
-                "pip", "install", "-r", str(req_file), "-q",
+                "pip",
+                "install",
+                "-r",
+                str(req_file),
+                "-q",
                 cwd=work_dir,
                 env=env,
                 stdout=asyncio.subprocess.PIPE,
@@ -655,7 +675,11 @@ async def _run_pytest(work_dir: Path, endpoint: str, timeout: int = 60) -> Pytes
 
         # Run pytest with verbose output for individual test parsing
         proc = await asyncio.create_subprocess_exec(
-            "pytest", "test_app.py", "-v", "--tb=short", f"--timeout={timeout}",
+            "pytest",
+            "test_app.py",
+            "-v",
+            "--tb=short",
+            f"--timeout={timeout}",
             cwd=work_dir,
             env=env,
             stdout=asyncio.subprocess.PIPE,

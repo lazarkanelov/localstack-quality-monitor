@@ -375,7 +375,9 @@ def update_trends(artifacts_dir: Path, logger: logging.Logger | None = None) -> 
     pass
 
 
-def delete_old_runs(artifacts_dir: Path, keep: int = 52, logger: logging.Logger | None = None) -> int:
+def delete_old_runs(
+    artifacts_dir: Path, keep: int = 52, logger: logging.Logger | None = None
+) -> int:
     """Delete runs older than the retention limit.
 
     Args:
@@ -442,21 +444,23 @@ def create_regression_issues(
     created_urls = []
 
     for regression in new_regressions:
-        title = f"[LSQM] Regression: {regression.get('architecture_name', regression['arch_hash'][:8])}"
+        title = (
+            f"[LSQM] Regression: {regression.get('architecture_name', regression['arch_hash'][:8])}"
+        )
         body = f"""## Regression Detected
 
-**Architecture**: {regression.get('architecture_name', 'Unknown')}
-**Hash**: `{regression['arch_hash']}`
-**Services**: {', '.join(regression.get('services_affected', []))}
+**Architecture**: {regression.get("architecture_name", "Unknown")}
+**Hash**: `{regression["arch_hash"]}`
+**Services**: {", ".join(regression.get("services_affected", []))}
 
 ### Status Change
-- **Previous**: {regression['from_status']}
-- **Current**: {regression['to_status']}
+- **Previous**: {regression["from_status"]}
+- **Current**: {regression["to_status"]}
 
 ### Run Information
-- From run: `{regression['from_run_id'][:8]}`
-- To run: `{regression['to_run_id'][:8]}`
-- Detected: {regression['detected_at']}
+- From run: `{regression["from_run_id"][:8]}`
+- To run: `{regression["to_run_id"][:8]}`
+- Detected: {regression["detected_at"]}
 
 ---
 *Automatically created by LocalStack Quality Monitor*
@@ -557,19 +561,21 @@ def create_gap_issues(
                 logger.debug(f"Skipping duplicate issue for {arch_hash[:8]}: {existing_url}")
             continue
 
-        gaps.append({
-            "arch_hash": arch_hash,
-            "arch_name": arch_data.get("name", arch_hash[:8]),
-            "services": arch_data.get("services", []),
-            "error_code": error_code,
-            "error_message": error_message,
-            "affected_service": affected_service,
-            "signature": signature,
-            "status": result.get("status", "FAILED"),
-            "parity_result": failure_analysis.get("parity_result"),
-            "localstack_exception": failure_analysis.get("localstack_exception"),
-            "not_implemented": failure_analysis.get("not_implemented"),
-        })
+        gaps.append(
+            {
+                "arch_hash": arch_hash,
+                "arch_name": arch_data.get("name", arch_hash[:8]),
+                "services": arch_data.get("services", []),
+                "error_code": error_code,
+                "error_message": error_message,
+                "affected_service": affected_service,
+                "signature": signature,
+                "status": result.get("status", "FAILED"),
+                "parity_result": failure_analysis.get("parity_result"),
+                "localstack_exception": failure_analysis.get("localstack_exception"),
+                "not_implemented": failure_analysis.get("not_implemented"),
+            }
+        )
 
     if not gaps:
         if logger:
@@ -596,7 +602,9 @@ def create_gap_issues(
         existing_issue = _find_existing_issue(repo, gap, logger)
         if existing_issue:
             if logger:
-                logger.info(f"Found existing issue for {gap['arch_hash'][:8]}: {existing_issue.html_url}")
+                logger.info(
+                    f"Found existing issue for {gap['arch_hash'][:8]}: {existing_issue.html_url}"
+                )
             # Track the existing issue to avoid re-checking
             filed_issues["signatures"][gap["signature"]] = existing_issue.html_url
             continue
@@ -625,15 +633,17 @@ def create_gap_issues(
 
             # Track filed issue
             filed_issues["signatures"][gap["signature"]] = issue.html_url
-            filed_issues["issues"].append({
-                "url": issue.html_url,
-                "signature": gap["signature"],
-                "arch_hash": gap["arch_hash"],
-                "service": gap["affected_service"],
-                "error_code": gap["error_code"],
-                "run_id": actual_run_id,
-                "created_at": issue.created_at.isoformat() if issue.created_at else "",
-            })
+            filed_issues["issues"].append(
+                {
+                    "url": issue.html_url,
+                    "signature": gap["signature"],
+                    "arch_hash": gap["arch_hash"],
+                    "service": gap["affected_service"],
+                    "error_code": gap["error_code"],
+                    "run_id": actual_run_id,
+                    "created_at": issue.created_at.isoformat() if issue.created_at else "",
+                }
+            )
 
             if logger:
                 logger.info(f"Created issue: {issue.html_url}")
@@ -668,10 +678,15 @@ def _generate_error_signature(
     normalized_msg = error_message.lower() if error_message else ""
     # Remove UUIDs, timestamps, ARNs, etc.
     import re
-    normalized_msg = re.sub(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', '<uuid>', normalized_msg)
-    normalized_msg = re.sub(r'arn:aws:[^:\s]+:[^:\s]*:[^:\s]*:[^\s]+', '<arn>', normalized_msg)
-    normalized_msg = re.sub(r'\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}', '<timestamp>', normalized_msg)
-    normalized_msg = re.sub(r'\d{10,}', '<id>', normalized_msg)  # Long numbers
+
+    normalized_msg = re.sub(
+        r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", "<uuid>", normalized_msg
+    )
+    normalized_msg = re.sub(r"arn:aws:[^:\s]+:[^:\s]*:[^:\s]*:[^\s]+", "<arn>", normalized_msg)
+    normalized_msg = re.sub(
+        r"\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}", "<timestamp>", normalized_msg
+    )
+    normalized_msg = re.sub(r"\d{10,}", "<id>", normalized_msg)  # Long numbers
 
     # Take first 100 chars of normalized message
     normalized_msg = normalized_msg[:100]
@@ -752,14 +767,14 @@ def _build_issue_body(gap: dict, run_id: str, artifacts_dir: Path) -> str:
 
     body = f"""## LocalStack Compatibility Gap
 
-**Service**: {gap.get('affected_service', 'Unknown')}
-**Error Code**: `{gap.get('error_code', 'N/A')}`
-**Architecture**: {gap.get('arch_name', arch_hash[:8])} (`{arch_hash[:12]}`)
+**Service**: {gap.get("affected_service", "Unknown")}
+**Error Code**: `{gap.get("error_code", "N/A")}`
+**Architecture**: {gap.get("arch_name", arch_hash[:8])} (`{arch_hash[:12]}`)
 
 ### Error Details
 
 ```
-{gap.get('error_message', 'No error message available')[:500]}
+{gap.get("error_message", "No error message available")[:500]}
 ```
 """
 
@@ -769,8 +784,8 @@ def _build_issue_body(gap: dict, run_id: str, artifacts_dir: Path) -> str:
         body += f"""
 ### Error Parity Analysis
 
-- **Has AWS Parity**: {'Yes' if parity.get('has_parity') else 'No'}
-- **Similarity Score**: {parity.get('similarity_score', 0):.1%}
+- **Has AWS Parity**: {"Yes" if parity.get("has_parity") else "No"}
+- **Similarity Score**: {parity.get("similarity_score", 0):.1%}
 """
         if parity.get("issues"):
             body += "- **Issues Found**:\n"
@@ -783,7 +798,7 @@ def _build_issue_body(gap: dict, run_id: str, artifacts_dir: Path) -> str:
 ### LocalStack Exception
 
 ```
-{gap['localstack_exception'][:300]}
+{gap["localstack_exception"][:300]}
 ```
 """
 
@@ -794,7 +809,7 @@ def _build_issue_body(gap: dict, run_id: str, artifacts_dir: Path) -> str:
 
 The following feature appears to be not implemented:
 ```
-{gap['not_implemented'][:200]}
+{gap["not_implemented"][:200]}
 ```
 """
 
@@ -802,8 +817,8 @@ The following feature appears to be not implemented:
 ### Detection Information
 
 - **Run ID**: `{run_id}`
-- **Status**: {gap.get('status', 'FAILED')}
-- **Services in Architecture**: {', '.join(gap.get('services', [])[:5])}
+- **Status**: {gap.get("status", "FAILED")}
+- **Services in Architecture**: {", ".join(gap.get("services", [])[:5])}
 
 ### Reproduction
 
@@ -877,7 +892,11 @@ def push_artifacts(
     )
     if push_result.returncode != 0:
         error_msg = push_result.stderr or push_result.stdout or "Unknown error"
-        if "permission" in error_msg.lower() or "403" in error_msg or "authentication" in error_msg.lower():
+        if (
+            "permission" in error_msg.lower()
+            or "403" in error_msg
+            or "authentication" in error_msg.lower()
+        ):
             raise RuntimeError(
                 f"Git push failed - permission denied. "
                 f"Make sure ARTIFACT_REPO_TOKEN secret is set with repo scope. "

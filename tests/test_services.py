@@ -42,29 +42,29 @@ class TestLocalStackServices:
 
     def test_extract_services_from_terraform_s3(self):
         """Test extracting S3 service from Terraform."""
-        tf_content = '''
+        tf_content = """
 resource "aws_s3_bucket" "example" {
   bucket = "my-bucket"
 }
-'''
+"""
         services = extract_services_from_terraform(tf_content)
         assert "s3" in services
 
     def test_extract_services_from_terraform_lambda(self):
         """Test extracting Lambda service from Terraform."""
-        tf_content = '''
+        tf_content = """
 resource "aws_lambda_function" "example" {
   function_name = "my-function"
   handler       = "index.handler"
   runtime       = "python3.9"
 }
-'''
+"""
         services = extract_services_from_terraform(tf_content)
         assert "lambda" in services
 
     def test_extract_services_from_terraform_multiple(self):
         """Test extracting multiple services from Terraform."""
-        tf_content = '''
+        tf_content = """
 resource "aws_s3_bucket" "bucket" {
   bucket = "my-bucket"
 }
@@ -80,7 +80,7 @@ resource "aws_dynamodb_table" "table" {
 resource "aws_sqs_queue" "queue" {
   name = "my-queue"
 }
-'''
+"""
         services = extract_services_from_terraform(tf_content)
         assert "s3" in services
         assert "lambda" in services
@@ -94,7 +94,7 @@ resource "aws_sqs_queue" "queue" {
 
     def test_extract_services_no_aws_resources(self):
         """Test extracting services when no AWS resources present."""
-        tf_content = '''
+        tf_content = """
 variable "region" {
   default = "us-east-1"
 }
@@ -102,24 +102,24 @@ variable "region" {
 output "message" {
   value = "hello"
 }
-'''
+"""
         services = extract_services_from_terraform(tf_content)
         assert len(services) == 0
 
     def test_is_standalone_with_resources(self):
         """Test that architecture with resources is standalone."""
-        tf_content = '''
+        tf_content = """
 resource "aws_s3_bucket" "example" {
   bucket = "my-bucket"
 }
-'''
+"""
         is_standalone, reason = is_standalone_architecture(tf_content)
         assert is_standalone is True
         assert reason == ""
 
     def test_is_standalone_with_resources_and_defaults(self):
         """Test that architecture with defaulted variables is standalone."""
-        tf_content = '''
+        tf_content = """
 variable "bucket_name" {
   default = "my-bucket"
 }
@@ -127,13 +127,13 @@ variable "bucket_name" {
 resource "aws_s3_bucket" "example" {
   bucket = var.bucket_name
 }
-'''
+"""
         is_standalone, reason = is_standalone_architecture(tf_content)
         assert is_standalone is True
 
     def test_not_standalone_required_variables(self):
         """Test that architecture with required variables is not standalone."""
-        tf_content = '''
+        tf_content = """
 variable "bucket_name" {
   description = "Required bucket name"
 }
@@ -141,14 +141,14 @@ variable "bucket_name" {
 resource "aws_s3_bucket" "example" {
   bucket = var.bucket_name
 }
-'''
+"""
         is_standalone, reason = is_standalone_architecture(tf_content)
         assert is_standalone is False
         assert "Required variables" in reason
 
     def test_not_standalone_module_only(self):
         """Test that module-only composition is not standalone."""
-        tf_content = '''
+        tf_content = """
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
   version = "3.0.0"
@@ -157,14 +157,14 @@ module "vpc" {
 module "lambda" {
   source = "./modules/lambda"
 }
-'''
+"""
         is_standalone, reason = is_standalone_architecture(tf_content)
         assert is_standalone is False
         assert "module composition" in reason.lower()
 
     def test_not_standalone_no_resources(self):
         """Test that empty config is not standalone."""
-        tf_content = '''
+        tf_content = """
 variable "region" {
   default = "us-east-1"
 }
@@ -172,14 +172,14 @@ variable "region" {
 output "message" {
   value = "hello"
 }
-'''
+"""
         is_standalone, reason = is_standalone_architecture(tf_content)
         assert is_standalone is False
         assert "No resources" in reason
 
     def test_not_standalone_remote_state(self):
         """Test that config with remote state dependency is not standalone."""
-        tf_content = '''
+        tf_content = """
 data "terraform_remote_state" "vpc" {
   backend = "s3"
 }
@@ -188,21 +188,21 @@ resource "aws_lambda_function" "example" {
   function_name = "test"
   subnet_ids    = data.terraform_remote_state.vpc.outputs.subnet_ids
 }
-'''
+"""
         is_standalone, reason = is_standalone_architecture(tf_content)
         assert is_standalone is False
         assert "external state" in reason.lower()
 
     def test_standalone_with_allowed_data_sources(self):
         """Test that architecture with non-problematic data sources is standalone."""
-        tf_content = '''
+        tf_content = """
 data "aws_region" "current" {}
 data "aws_availability_zones" "available" {}
 
 resource "aws_s3_bucket" "example" {
   bucket = "my-bucket-${data.aws_region.current.name}"
 }
-'''
+"""
         is_standalone, reason = is_standalone_architecture(tf_content)
         assert is_standalone is True
 
@@ -475,7 +475,7 @@ class TestGeneratorMocked:
         """Test extracting files from Claude response."""
         from lsqm.services.generator import _extract_files_from_response
 
-        response = '''
+        response = """
 Here are the generated files:
 
 ```json
@@ -486,7 +486,7 @@ Here are the generated files:
   "requirements.txt": "pytest\\nboto3"
 }
 ```
-'''
+"""
         files = _extract_files_from_response(response)
 
         assert "conftest.py" in files
@@ -516,14 +516,14 @@ Here are the generated files:
         """Test validating valid Python syntax."""
         from lsqm.services.generator import _validate_python_syntax
 
-        code = '''
+        code = """
 def hello():
     print("Hello, World!")
 
 class MyClass:
     def method(self):
         return 42
-'''
+"""
         valid, error = _validate_python_syntax(code)
 
         assert valid is True
@@ -533,10 +533,10 @@ class MyClass:
         """Test validating invalid Python syntax."""
         from lsqm.services.generator import _validate_python_syntax
 
-        code = '''
+        code = """
 def broken(
     # Missing closing parenthesis
-'''
+"""
         valid, error = _validate_python_syntax(code)
 
         assert valid is False

@@ -225,9 +225,7 @@ class TestComputeArchitectureHash:
 
     def test_hash_single_file(self):
         """Test computing hash for single file."""
-        tf_files = {
-            "main.tf": 'resource "aws_vpc" "main" { cidr_block = "10.0.0.0/16" }'
-        }
+        tf_files = {"main.tf": 'resource "aws_vpc" "main" { cidr_block = "10.0.0.0/16" }'}
 
         hash1 = compute_architecture_hash(tf_files)
 
@@ -247,9 +245,7 @@ class TestComputeArchitectureHash:
 
     def test_hash_deterministic(self):
         """Test that hash is deterministic."""
-        tf_files = {
-            "main.tf": 'resource "aws_s3_bucket" "test" { bucket = "my-bucket" }'
-        }
+        tf_files = {"main.tf": 'resource "aws_s3_bucket" "test" { bucket = "my-bucket" }'}
 
         hash1 = compute_architecture_hash(tf_files)
         hash2 = compute_architecture_hash(tf_files)

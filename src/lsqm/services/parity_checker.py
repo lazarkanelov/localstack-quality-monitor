@@ -152,9 +152,7 @@ def analyze_error_parity(
     if aws_reference:
         # Compare against actual AWS reference
         similarity = SequenceMatcher(
-            None,
-            localstack_message.lower(),
-            aws_reference.lower()
+            None, localstack_message.lower(), aws_reference.lower()
         ).ratio()
     elif expected_pattern:
         # Check if message matches expected pattern
@@ -195,7 +193,9 @@ def _check_message_structure(error_code: str, message: str) -> list[str]:
 
     # Check for LocalStack-specific patterns that differ from AWS
     if "localstack" in message.lower():
-        issues.append("Message contains 'localstack' - AWS errors should not reference implementation")
+        issues.append(
+            "Message contains 'localstack' - AWS errors should not reference implementation"
+        )
 
     if "not implemented" in message.lower():
         issues.append("Message contains 'not implemented' - indicates missing functionality")
@@ -243,8 +243,7 @@ def extract_error_details(error_output: str) -> dict:
     # Pattern 1: botocore ClientError format
     # "An error occurred (NoSuchBucket) when calling the GetObject operation: ..."
     client_error = re.search(
-        r'An error occurred \((\w+)\) when calling the (\w+) operation: (.+?)(?:\n|$)',
-        error_output
+        r"An error occurred \((\w+)\) when calling the (\w+) operation: (.+?)(?:\n|$)", error_output
     )
     if client_error:
         result["error_code"] = client_error.group(1)
@@ -253,9 +252,9 @@ def extract_error_details(error_output: str) -> dict:
         return result
 
     # Pattern 2: XML error format
-    xml_code = re.search(r'<Code>(\w+)</Code>', error_output)
-    xml_message = re.search(r'<Message>([^<]+)</Message>', error_output)
-    xml_status = re.search(r'<HTTPStatusCode>(\d+)</HTTPStatusCode>', error_output)
+    xml_code = re.search(r"<Code>(\w+)</Code>", error_output)
+    xml_message = re.search(r"<Message>([^<]+)</Message>", error_output)
+    xml_status = re.search(r"<HTTPStatusCode>(\d+)</HTTPStatusCode>", error_output)
     if xml_code:
         result["error_code"] = xml_code.group(1)
     if xml_message:
@@ -280,8 +279,7 @@ def extract_error_details(error_output: str) -> dict:
     # Pattern 4: Terraform error format
     # "Error: creating Lambda Function: InvalidParameterValueException: The runtime..."
     tf_error = re.search(
-        r'Error:\s*([^:]+):\s*(\w+(?:Exception|Error)):\s*(.+?)(?=\n|$)',
-        error_output
+        r"Error:\s*([^:]+):\s*(\w+(?:Exception|Error)):\s*(.+?)(?=\n|$)", error_output
     )
     if tf_error and not result["error_code"]:
         result["operation"] = tf_error.group(1).strip()

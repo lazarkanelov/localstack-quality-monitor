@@ -82,9 +82,7 @@ class SchemaValidationResult:
             service=data.get("service", ""),
             operation=data.get("operation", ""),
             is_valid=data.get("is_valid", True),
-            violations=[
-                SchemaViolation.from_dict(v) for v in data.get("violations", [])
-            ],
+            violations=[SchemaViolation.from_dict(v) for v in data.get("violations", [])],
             checked_fields=data.get("checked_fields", 0),
             error=data.get("error"),
         )
@@ -206,17 +204,11 @@ class BotocoreSchemaValidator:
 
         # Type-specific validation
         if shape_type == "structure":
-            violations.extend(
-                self._validate_structure(value, shape, path, service, operation)
-            )
+            violations.extend(self._validate_structure(value, shape, path, service, operation))
         elif shape_type == "list":
-            violations.extend(
-                self._validate_list(value, shape, path, service, operation)
-            )
+            violations.extend(self._validate_list(value, shape, path, service, operation))
         elif shape_type == "map":
-            violations.extend(
-                self._validate_map(value, shape, path, service, operation)
-            )
+            violations.extend(self._validate_map(value, shape, path, service, operation))
         elif shape_type == "string":
             if not isinstance(value, str):
                 violations.append(
@@ -337,9 +329,7 @@ class BotocoreSchemaValidator:
             if field_name in members:
                 member_shape = members[field_name]
                 violations.extend(
-                    self._validate_shape(
-                        field_value, member_shape, field_path, service, operation
-                    )
+                    self._validate_shape(field_value, member_shape, field_path, service, operation)
                 )
             # Note: We don't flag extra fields as violations since AWS may add new fields
 
@@ -417,9 +407,7 @@ class BotocoreSchemaValidator:
         # Validate first few values
         for k, v in list(value.items())[:10]:
             item_path = f"{path}['{k}']"
-            violations.extend(
-                self._validate_shape(v, value_shape, item_path, service, operation)
-            )
+            violations.extend(self._validate_shape(v, value_shape, item_path, service, operation))
 
         return violations
 

@@ -110,8 +110,12 @@ def generate_html_report(
         terraform_output = _strip_ansi(terraform_apply.get("logs", ""))
 
         # Build artifact URLs for this architecture
-        arch_artifact_url = f"{artifact_repo_url}/tree/main/architectures/{arch_hash}" if artifact_repo_url else ""
-        app_artifact_url = f"{artifact_repo_url}/tree/main/apps/{arch_hash}" if artifact_repo_url else ""
+        arch_artifact_url = (
+            f"{artifact_repo_url}/tree/main/architectures/{arch_hash}" if artifact_repo_url else ""
+        )
+        app_artifact_url = (
+            f"{artifact_repo_url}/tree/main/apps/{arch_hash}" if artifact_repo_url else ""
+        )
 
         # Analyze failures for LocalStack quality insights
         container_logs = result.get("container_logs", "")
@@ -122,28 +126,30 @@ def generate_html_report(
             error_message=result.get("error_message"),
         )
 
-        result_rows.append({
-            "hash": arch_hash,
-            "name": arch_data.get("name", arch_hash[:8]),
-            "services": services,
-            "status": status,
-            "duration": result.get("duration_seconds", 0),
-            "pytest_passed": pytest_passed,
-            "pytest_failed": pytest_failed,
-            "pytest_output": pytest_output,
-            "terraform_output": terraform_output,
-            "logs": container_logs,  # Full logs - no truncation
-            "terraform_files": terraform_files,
-            "app_files": app_files,
-            "test_features": test_features,
-            "test_cases": test_cases,
-            "source_url": arch_data.get("source_url", ""),
-            "source_type": arch_data.get("source_type", ""),
-            "original_format": arch_data.get("original_format", "terraform"),
-            "arch_artifact_url": arch_artifact_url,
-            "app_artifact_url": app_artifact_url,
-            "failure_analysis": failure_analysis,
-        })
+        result_rows.append(
+            {
+                "hash": arch_hash,
+                "name": arch_data.get("name", arch_hash[:8]),
+                "services": services,
+                "status": status,
+                "duration": result.get("duration_seconds", 0),
+                "pytest_passed": pytest_passed,
+                "pytest_failed": pytest_failed,
+                "pytest_output": pytest_output,
+                "terraform_output": terraform_output,
+                "logs": container_logs,  # Full logs - no truncation
+                "terraform_files": terraform_files,
+                "app_files": app_files,
+                "test_features": test_features,
+                "test_cases": test_cases,
+                "source_url": arch_data.get("source_url", ""),
+                "source_type": arch_data.get("source_type", ""),
+                "original_format": arch_data.get("original_format", "terraform"),
+                "arch_artifact_url": arch_artifact_url,
+                "app_artifact_url": app_artifact_url,
+                "failure_analysis": failure_analysis,
+            }
+        )
 
     # Calculate test pass rate
     test_pass_rate = (total_tests_passed / total_tests * 100) if total_tests > 0 else 0
@@ -153,12 +159,14 @@ def generate_html_report(
     for svc_name, counts in service_counts.items():
         svc_total = counts["passed"] + counts["failed"]
         svc_pass_rate = (counts["passed"] / svc_total * 100) if svc_total > 0 else 0
-        service_stats.append({
-            "name": svc_name,
-            "passed": counts["passed"],
-            "failed": counts["failed"],
-            "pass_rate": svc_pass_rate,
-        })
+        service_stats.append(
+            {
+                "name": svc_name,
+                "passed": counts["passed"],
+                "failed": counts["failed"],
+                "pass_rate": svc_pass_rate,
+            }
+        )
     service_stats.sort(key=lambda s: s["pass_rate"], reverse=True)
 
     # Sort by status (failures first)
@@ -235,12 +243,14 @@ def _load_service_trends(artifacts_dir: Path) -> list[dict]:
 
     services = []
     for name, trend in data.get("services", {}).items():
-        services.append({
-            "name": name,
-            "pass_rate": trend.get("current_pass_rate", 0) * 100,
-            "trend": trend.get("trend", "stable"),
-            "count": trend.get("architecture_count", 0),
-        })
+        services.append(
+            {
+                "name": name,
+                "pass_rate": trend.get("current_pass_rate", 0) * 100,
+                "trend": trend.get("trend", "stable"),
+                "count": trend.get("architecture_count", 0),
+            }
+        )
 
     # Sort by pass rate
     services.sort(key=lambda s: s["pass_rate"], reverse=True)
@@ -277,12 +287,14 @@ def _load_run_history(artifacts_dir: Path, limit: int = 12) -> list[dict]:
             summary = data.get("summary", {})
             total = summary.get("total", 0)
             passed = summary.get("passed", 0)
-            history.append({
-                "run_id": data.get("run_id", run_dir.name)[:8],
-                "date": data.get("started_at", "")[:10],
-                "pass_rate": (passed / total * 100) if total > 0 else 0,
-                "total": total,
-            })
+            history.append(
+                {
+                    "run_id": data.get("run_id", run_dir.name)[:8],
+                    "date": data.get("started_at", "")[:10],
+                    "pass_rate": (passed / total * 100) if total > 0 else 0,
+                    "total": total,
+                }
+            )
 
     # Reverse to show oldest first (for chart)
     return list(reversed(history))
@@ -362,7 +374,7 @@ def _extract_test_cases(app_files: dict[str, str]) -> list[dict[str, str]]:
     test_cases = []
 
     # Pattern to match test functions
-    func_pattern = re.compile(r'def\s+(test_\w+)\s*\([^)]*\)\s*:', re.MULTILINE)
+    func_pattern = re.compile(r"def\s+(test_\w+)\s*\([^)]*\)\s*:", re.MULTILINE)
     # Pattern to match docstring after function definition
     docstring_pattern = re.compile(r'^\s*"""(.+?)"""', re.DOTALL)
 
@@ -371,7 +383,7 @@ def _extract_test_cases(app_files: dict[str, str]) -> list[dict[str, str]]:
             for match in func_pattern.finditer(content):
                 test_name = match.group(1)
                 # Look for docstring after the function definition
-                rest_of_content = content[match.end():]
+                rest_of_content = content[match.end() :]
                 docstring = ""
                 doc_match = docstring_pattern.match(rest_of_content)
                 if doc_match:
@@ -379,11 +391,13 @@ def _extract_test_cases(app_files: dict[str, str]) -> list[dict[str, str]]:
 
                 # Convert test_name to human readable format
                 readable_name = test_name.replace("test_", "").replace("_", " ").title()
-                test_cases.append({
-                    "name": test_name,
-                    "readable_name": readable_name,
-                    "description": docstring,
-                })
+                test_cases.append(
+                    {
+                        "name": test_name,
+                        "readable_name": readable_name,
+                        "description": docstring,
+                    }
+                )
 
     return test_cases
 
@@ -461,23 +475,32 @@ def analyze_failure(
 
         # Pattern 4: Lambda runtime validation errors (Terraform provider issue, not LocalStack)
         if "expected runtime to be one of" in terraform_output:
-            runtime_match = re.search(r'got\s+(\S+)', terraform_output)
+            runtime_match = re.search(r"got\s+(\S+)", terraform_output)
             runtime = runtime_match.group(1) if runtime_match else "unknown"
-            analysis["error_message"] = f"Unsupported Lambda runtime in Terraform provider validation: {runtime}"
+            analysis["error_message"] = (
+                f"Unsupported Lambda runtime in Terraform provider validation: {runtime}"
+            )
             analysis["is_localstack_issue"] = False
             analysis["category"] = "provider_version"
 
         # Pattern 5: tflocal override issues (tflocal bug, not LocalStack)
-        if "Unsupported argument" in terraform_output and "localstack_providers_override.tf" in terraform_output:
+        if (
+            "Unsupported argument" in terraform_output
+            and "localstack_providers_override.tf" in terraform_output
+        ):
             arg_match = re.search(r'argument named "(\w+)"', terraform_output)
             arg_name = arg_match.group(1) if arg_match else "unknown"
-            analysis["error_message"] = f"tflocal generated unsupported provider endpoint: {arg_name}"
+            analysis["error_message"] = (
+                f"tflocal generated unsupported provider endpoint: {arg_name}"
+            )
             analysis["is_localstack_issue"] = False
             analysis["category"] = "tflocal_bug"
 
         # Pattern 6: Context variable issues (module configuration, not LocalStack)
         if "var.context" in terraform_output and "Unsupported attribute" in terraform_output:
-            analysis["error_message"] = "Module requires external context object (null-label pattern)"
+            analysis["error_message"] = (
+                "Module requires external context object (null-label pattern)"
+            )
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
 
@@ -525,7 +548,9 @@ def analyze_failure(
             container_logs,
         )
         if ls_exception:
-            analysis["localstack_exception"] = f"{ls_exception.group(1)}: {ls_exception.group(2).strip()}"
+            analysis["localstack_exception"] = (
+                f"{ls_exception.group(1)}: {ls_exception.group(2).strip()}"
+            )
 
         # Look for "not implemented" messages
         not_impl = re.search(r"not\s+implemented[^\n]*", container_logs, re.IGNORECASE)

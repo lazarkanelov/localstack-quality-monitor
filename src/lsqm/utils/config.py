@@ -22,11 +22,13 @@ class GitHubOrgsSourceConfig:
     """Configuration for GitHub Organizations discovery source."""
 
     enabled: bool = True
-    organizations: list[str] = field(default_factory=lambda: [
-        "aws-quickstart",
-        "aws-solutions",
-        "aws-samples",
-    ])
+    organizations: list[str] = field(
+        default_factory=lambda: [
+            "aws-quickstart",
+            "aws-solutions",
+            "aws-samples",
+        ]
+    )
     file_patterns: list[str] = field(default_factory=lambda: ["*.tf", "**/*.tf"])
     max_files_per_repo: int = 50
     skip_archived: bool = True
@@ -38,10 +40,12 @@ class ServerlessSourceConfig:
     """Configuration for Serverless Framework discovery source."""
 
     enabled: bool = True
-    search_queries: list[str] = field(default_factory=lambda: [
-        "serverless.yml aws",
-        "serverless.yaml aws lambda",
-    ])
+    search_queries: list[str] = field(
+        default_factory=lambda: [
+            "serverless.yml aws",
+            "serverless.yaml aws lambda",
+        ]
+    )
     max_results: int = 100
 
 
@@ -50,10 +54,12 @@ class CDKSourceConfig:
     """Configuration for AWS CDK Examples discovery source."""
 
     enabled: bool = True
-    repositories: list[str] = field(default_factory=lambda: [
-        "aws-samples/aws-cdk-examples",
-        "cdk-patterns/serverless",
-    ])
+    repositories: list[str] = field(
+        default_factory=lambda: [
+            "aws-samples/aws-cdk-examples",
+            "cdk-patterns/serverless",
+        ]
+    )
     languages: list[str] = field(default_factory=lambda: ["typescript", "python"])
 
 
@@ -106,24 +112,14 @@ class LocalSourceConfig:
 class SourcesConfig:
     """Combined configuration for all discovery sources."""
 
-    github_repos: GitHubReposSourceConfig = field(
-        default_factory=GitHubReposSourceConfig
-    )
-    github_orgs: GitHubOrgsSourceConfig = field(
-        default_factory=GitHubOrgsSourceConfig
-    )
+    github_repos: GitHubReposSourceConfig = field(default_factory=GitHubReposSourceConfig)
+    github_orgs: GitHubOrgsSourceConfig = field(default_factory=GitHubOrgsSourceConfig)
     terraform_registry: TerraformRegistrySourceConfig = field(
         default_factory=TerraformRegistrySourceConfig
     )
-    serverless: ServerlessSourceConfig = field(
-        default_factory=ServerlessSourceConfig
-    )
-    cdk: CDKSourceConfig = field(
-        default_factory=CDKSourceConfig
-    )
-    local: LocalSourceConfig = field(
-        default_factory=LocalSourceConfig
-    )
+    serverless: ServerlessSourceConfig = field(default_factory=ServerlessSourceConfig)
+    cdk: CDKSourceConfig = field(default_factory=CDKSourceConfig)
+    local: LocalSourceConfig = field(default_factory=LocalSourceConfig)
 
     @classmethod
     def from_dict(cls, data: dict) -> "SourcesConfig":
@@ -137,9 +133,7 @@ class SourcesConfig:
                 config.github_repos.enabled = gr
             elif isinstance(gr, list):
                 # Shorthand: just a list of repos
-                config.github_repos.repositories = [
-                    GitHubRepoConfig.from_value(r) for r in gr
-                ]
+                config.github_repos.repositories = [GitHubRepoConfig.from_value(r) for r in gr]
             elif isinstance(gr, dict):
                 config.github_repos.enabled = gr.get("enabled", True)
                 if "repositories" in gr:
