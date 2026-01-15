@@ -7,6 +7,7 @@ from pathlib import Path
 
 try:
     from flask import Flask, jsonify, request
+
     FLASK_AVAILABLE = True
 except ImportError:
     FLASK_AVAILABLE = False
@@ -24,7 +25,9 @@ class ResultsAPI:
         self.logger = logger
 
         if not FLASK_AVAILABLE:
-            raise ImportError("Flask is required for the API server. Install with: pip install flask")
+            raise ImportError(
+                "Flask is required for the API server. Install with: pip install flask"
+            )
 
         self.app = Flask("lsqm-api")
         self._register_routes()
@@ -49,11 +52,13 @@ class ResultsAPI:
                         if summary_file.exists():
                             with open(summary_file) as f:
                                 summary = json.load(f)
-                            runs.append({
-                                "run_id": run_dir.name,
-                                "started_at": summary.get("started_at"),
-                                "summary": summary.get("summary", {}),
-                            })
+                            runs.append(
+                                {
+                                    "run_id": run_dir.name,
+                                    "started_at": summary.get("started_at"),
+                                    "summary": summary.get("summary", {}),
+                                }
+                            )
 
             limit = request.args.get("limit", 20, type=int)
             return jsonify({"runs": runs[:limit], "total": len(runs)})
@@ -83,11 +88,13 @@ class ResultsAPI:
                     with open(result_file) as f:
                         results.append(json.load(f))
 
-            return jsonify({
-                "run_id": run_id,
-                "summary": summary,
-                "results": results,
-            })
+            return jsonify(
+                {
+                    "run_id": run_id,
+                    "summary": summary,
+                    "results": results,
+                }
+            )
 
         @self.app.route("/api/v1/runs/<run_id>/results/<arch_hash>")
         def get_result(run_id: str, arch_hash: str):
@@ -118,23 +125,24 @@ class ResultsAPI:
             if services:
                 service_list = services.split(",")
                 index = {
-                    h: data for h, data in index.items()
+                    h: data
+                    for h, data in index.items()
                     if any(s in data.get("services", []) for s in service_list)
                 }
 
             limit = request.args.get("limit", 100, type=int)
             offset = request.args.get("offset", 0, type=int)
 
-            archs = list(index.items())[offset:offset + limit]
+            archs = list(index.items())[offset : offset + limit]
 
-            return jsonify({
-                "architectures": [
-                    {"hash": h, **data} for h, data in archs
-                ],
-                "total": len(index),
-                "limit": limit,
-                "offset": offset,
-            })
+            return jsonify(
+                {
+                    "architectures": [{"hash": h, **data} for h, data in archs],
+                    "total": len(index),
+                    "limit": limit,
+                    "offset": offset,
+                }
+            )
 
         @self.app.route("/api/v1/architectures/<arch_hash>")
         def get_architecture(arch_hash: str):
@@ -150,11 +158,13 @@ class ResultsAPI:
                     # Get latest validation result
                     latest_result = self._get_latest_result(arch_hash)
 
-                    return jsonify({
-                        "hash": arch_hash,
-                        **arch_data,
-                        "latest_result": latest_result,
-                    })
+                    return jsonify(
+                        {
+                            "hash": arch_hash,
+                            **arch_data,
+                            "latest_result": latest_result,
+                        }
+                    )
 
             return jsonify({"error": "Architecture not found"}), 404
 
@@ -230,7 +240,8 @@ class ResultsAPI:
                 metric_type: {
                     "count": len(baselines),
                     "avg_duration": sum(b["baseline_duration"] for b in baselines) / len(baselines)
-                    if baselines else 0,
+                    if baselines
+                    else 0,
                 }
                 for metric_type, baselines in by_type.items()
             }
@@ -330,11 +341,13 @@ class ResultsAPI:
             stats["pass_rate"] = stats["passed"] / total if total > 0 else 0
 
         return {
-            "services": dict(sorted(
-                service_stats.items(),
-                key=lambda x: x[1]["total"],
-                reverse=True,
-            ))
+            "services": dict(
+                sorted(
+                    service_stats.items(),
+                    key=lambda x: x[1]["total"],
+                    reverse=True,
+                )
+            )
         }
 
     def run(self, host: str = "0.0.0.0", port: int = 8080, debug: bool = False):

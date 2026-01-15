@@ -250,15 +250,14 @@ class IncrementalValidator:
             "will_skip": len(will_skip),
             "skip_breakdown": {
                 "unchanged_passed": sum(
-                    1 for r in skip_reasons.values()
-                    if r and "passed" in r.lower()
+                    1 for r in skip_reasons.values() if r and "passed" in r.lower()
                 ),
                 "config_errors": sum(
-                    1 for r in skip_reasons.values()
-                    if r and "config" in r.lower()
+                    1 for r in skip_reasons.values() if r and "config" in r.lower()
                 ),
                 "other": sum(
-                    1 for r in skip_reasons.values()
+                    1
+                    for r in skip_reasons.values()
                     if r and "passed" not in r.lower() and "config" not in r.lower()
                 ),
             },
@@ -327,8 +326,7 @@ def filter_for_incremental_validation(
 
     if logger:
         logger.info(
-            f"Incremental validation: {len(to_validate)} to run, "
-            f"{len(cached_results)} cached"
+            f"Incremental validation: {len(to_validate)} to run, {len(cached_results)} cached"
         )
 
     return to_validate, cached_results

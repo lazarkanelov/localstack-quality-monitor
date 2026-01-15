@@ -311,16 +311,18 @@ class WorkerRegistry:
             last_heartbeat = datetime.fromisoformat(data["last_heartbeat"])
 
             if now - last_heartbeat < self.heartbeat_timeout:
-                workers.append(WorkerStatus(
-                    worker_id=data["worker_id"],
-                    hostname=data["hostname"],
-                    started_at=datetime.fromisoformat(data["started_at"]),
-                    last_heartbeat=last_heartbeat,
-                    tasks_completed=data.get("tasks_completed", 0),
-                    tasks_failed=data.get("tasks_failed", 0),
-                    current_task=data.get("current_task"),
-                    status=data.get("status", "idle"),
-                ))
+                workers.append(
+                    WorkerStatus(
+                        worker_id=data["worker_id"],
+                        hostname=data["hostname"],
+                        started_at=datetime.fromisoformat(data["started_at"]),
+                        last_heartbeat=last_heartbeat,
+                        tasks_completed=data.get("tasks_completed", 0),
+                        tasks_failed=data.get("tasks_failed", 0),
+                        current_task=data.get("current_task"),
+                        status=data.get("status", "idle"),
+                    )
+                )
             else:
                 # Mark as offline
                 data["status"] = "offline"
@@ -446,9 +448,7 @@ class DistributedCoordinator:
         Returns:
             Dict with submission info
         """
-        task_ids = self.queue.enqueue_batch(
-            architectures, run_id, localstack_version, timeout
-        )
+        task_ids = self.queue.enqueue_batch(architectures, run_id, localstack_version, timeout)
 
         return {
             "run_id": run_id,

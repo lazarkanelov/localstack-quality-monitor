@@ -498,9 +498,7 @@ def analyze_failure(
         ):
             arg_match = re.search(r'argument named "(\w+)"', terraform_output)
             arg_name = arg_match.group(1) if arg_match else "unknown"
-            analysis["error_message"] = (
-                f"Unsupported provider endpoint: {arg_name}"
-            )
+            analysis["error_message"] = f"Unsupported provider endpoint: {arg_name}"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "provider_config"
 
@@ -529,13 +527,18 @@ def analyze_failure(
             analysis["category"] = "missing_files"
 
         # Pattern 9: Archive creation errors (usually missing source files)
-        if "archive creation error" in terraform_output.lower() and not analysis.get("error_message"):
+        if "archive creation error" in terraform_output.lower() and not analysis.get(
+            "error_message"
+        ):
             analysis["error_message"] = "Archive creation error - missing source files"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "missing_files"
 
         # Pattern 9b: Missing attribute configuration in archive_file (not LocalStack)
-        if "Missing Attribute Configuration" in terraform_output and "archive_file" in terraform_output:
+        if (
+            "Missing Attribute Configuration" in terraform_output
+            and "archive_file" in terraform_output
+        ):
             analysis["error_message"] = "Archive file missing source configuration"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "missing_files"
@@ -580,9 +583,7 @@ def analyze_failure(
 
         # Pattern 13: S3 Control service not enabled (genuine LocalStack gap)
         if "s3control" in terraform_output.lower() and "not enabled" in terraform_output.lower():
-            analysis["error_message"] = (
-                "S3 Control service not enabled in LocalStack"
-            )
+            analysis["error_message"] = "S3 Control service not enabled in LocalStack"
             analysis["is_localstack_issue"] = True
             analysis["category"] = "service_gap"
 
@@ -591,9 +592,7 @@ def analyze_failure(
             # Extract service name
             service_match = re.search(r"service\s+(\w+)\s+is", terraform_output.lower())
             service_name = service_match.group(1) if service_match else "unknown"
-            analysis["error_message"] = (
-                f"Service '{service_name}' requires LocalStack Pro license"
-            )
+            analysis["error_message"] = f"Service '{service_name}' requires LocalStack Pro license"
             analysis["is_localstack_issue"] = True
             analysis["category"] = "pro_feature"
 
@@ -604,7 +603,10 @@ def analyze_failure(
             analysis["category"] = "infrastructure"
 
         # Pattern 16: Backend configuration errors (not LocalStack)
-        if "backend initialization" in terraform_output.lower() or "backend configuration" in terraform_output.lower():
+        if (
+            "backend initialization" in terraform_output.lower()
+            or "backend configuration" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Backend configuration error - remote state not available"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
@@ -616,7 +618,10 @@ def analyze_failure(
             analysis["category"] = "provider_config"
 
         # Pattern 18: Resource dependency errors (typically config issue)
-        if "depends on resource" in terraform_output.lower() and "not exist" in terraform_output.lower():
+        if (
+            "depends on resource" in terraform_output.lower()
+            and "not exist" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Resource dependency error - missing prerequisite"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
@@ -628,7 +633,10 @@ def analyze_failure(
             analysis["category"] = "provider_config"
 
         # Pattern 20: Cycle dependency errors (Terraform config issue)
-        if "cycle:" in terraform_output.lower() or "circular dependency" in terraform_output.lower():
+        if (
+            "cycle:" in terraform_output.lower()
+            or "circular dependency" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Circular dependency in Terraform configuration"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
@@ -640,15 +648,22 @@ def analyze_failure(
             analysis["category"] = "config"
 
         # Pattern 22: Data source lookup failures for external resources
-        if 'data.aws_' in terraform_output and 'couldn\'t find' in terraform_output.lower():
+        if "data.aws_" in terraform_output and "couldn't find" in terraform_output.lower():
             # Check if it's looking for a pre-existing resource
-            if any(x in terraform_output.lower() for x in ["vpc", "subnet", "security_group", "ami"]):
-                analysis["error_message"] = "Data source lookup failed - expects pre-existing AWS resources"
+            if any(
+                x in terraform_output.lower() for x in ["vpc", "subnet", "security_group", "ami"]
+            ):
+                analysis["error_message"] = (
+                    "Data source lookup failed - expects pre-existing AWS resources"
+                )
                 analysis["is_localstack_issue"] = False
                 analysis["category"] = "config"
 
         # Pattern 23: Terraform state lock errors (infrastructure)
-        if "state lock" in terraform_output.lower() or "lock acquisition" in terraform_output.lower():
+        if (
+            "state lock" in terraform_output.lower()
+            or "lock acquisition" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Terraform state lock error"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "infrastructure"
@@ -672,31 +687,46 @@ def analyze_failure(
             analysis["category"] = "config"
 
         # Pattern 27: ForEach/count errors from missing data
-        if "invalid for_each argument" in terraform_output.lower() or "invalid count argument" in terraform_output.lower():
+        if (
+            "invalid for_each argument" in terraform_output.lower()
+            or "invalid count argument" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Dynamic resource count depends on unavailable data"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
 
         # Pattern 28: Region-specific availability zone errors
-        if "availability zone" in terraform_output.lower() and "not available" in terraform_output.lower():
+        if (
+            "availability zone" in terraform_output.lower()
+            and "not available" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Availability zone not available in region"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
 
         # Pattern 29: Module not found in registry
-        if "module is not available" in terraform_output.lower() or "no available releases match" in terraform_output.lower():
+        if (
+            "module is not available" in terraform_output.lower()
+            or "no available releases match" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Terraform module not found in registry"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "terraform_registry"
 
         # Pattern 30: Invalid HCL syntax
-        if "invalid syntax" in terraform_output.lower() or "unexpected token" in terraform_output.lower():
+        if (
+            "invalid syntax" in terraform_output.lower()
+            or "unexpected token" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Invalid Terraform HCL syntax"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "syntax"
 
         # Pattern 31: Required provider constraint not met
-        if "required_providers" in terraform_output.lower() and "constraint" in terraform_output.lower():
+        if (
+            "required_providers" in terraform_output.lower()
+            and "constraint" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Provider version constraint not satisfiable"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "provider_version"
@@ -711,7 +741,9 @@ def analyze_failure(
         if "reference to undeclared resource" in terraform_output.lower():
             res_match = re.search(r'resource\s+"([^"]+)"\s+"([^"]+)"', terraform_output)
             if res_match:
-                analysis["error_message"] = f"Reference to undeclared resource: {res_match.group(1)}.{res_match.group(2)}"
+                analysis["error_message"] = (
+                    f"Reference to undeclared resource: {res_match.group(1)}.{res_match.group(2)}"
+                )
             else:
                 analysis["error_message"] = "Reference to undeclared resource in Terraform config"
             analysis["is_localstack_issue"] = False
@@ -725,7 +757,9 @@ def analyze_failure(
                 analysis["category"] = "missing_prereq"
 
         # Pattern 34: Terraform lock file issues
-        if "lock file" in terraform_output.lower() and ("missing" in terraform_output.lower() or "checksum" in terraform_output.lower()):
+        if "lock file" in terraform_output.lower() and (
+            "missing" in terraform_output.lower() or "checksum" in terraform_output.lower()
+        ):
             analysis["error_message"] = "Terraform dependency lock file issue"
             analysis["is_localstack_issue"] = False
             analysis["category"] = "terraform_init"
@@ -819,9 +853,7 @@ def analyze_failure(
     # === POSITIVE LOCALSTACK ISSUE IDENTIFICATION ===
     # Only mark as LocalStack issue if we have positive evidence
     # This overrides the default False value when we're confident it's a LocalStack issue
-    is_ls_issue, ls_reason = _is_localstack_issue(
-        terraform_output, container_logs, analysis
-    )
+    is_ls_issue, ls_reason = _is_localstack_issue(terraform_output, container_logs, analysis)
     if is_ls_issue:
         analysis["is_localstack_issue"] = True
         analysis["localstack_issue_reason"] = ls_reason
@@ -898,9 +930,16 @@ def _is_localstack_issue(
     # Check if already marked as not LocalStack (config issue patterns matched)
     # If a specific config pattern matched, trust that determination
     if analysis.get("category") in (
-        "config", "provider_config", "provider_version", "terraform_init",
-        "terraform_registry", "missing_files", "syntax", "ci_environment",
-        "infrastructure", "missing_prereq",
+        "config",
+        "provider_config",
+        "provider_version",
+        "terraform_init",
+        "terraform_registry",
+        "missing_files",
+        "syntax",
+        "ci_environment",
+        "infrastructure",
+        "missing_prereq",
     ):
         return False, ""
 

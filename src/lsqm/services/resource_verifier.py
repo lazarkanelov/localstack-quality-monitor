@@ -49,9 +49,7 @@ def verify_resource_configurations(
 
         try:
             # Get the actual resource configuration from AWS/LocalStack
-            actual_config = _get_actual_config(
-                session, endpoint, resource_type, config
-            )
+            actual_config = _get_actual_config(session, endpoint, resource_type, config)
 
             if actual_config:
                 # Compare configurations
@@ -106,8 +104,7 @@ def _parse_terraform_configs(work_dir: Path) -> dict[str, dict]:
         # Find resource blocks
         # resource "aws_s3_bucket" "my_bucket" { ... }
         resource_pattern = re.compile(
-            r'resource\s+"([^"]+)"\s+"([^"]+)"\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}',
-            re.DOTALL
+            r'resource\s+"([^"]+)"\s+"([^"]+)"\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}', re.DOTALL
         )
 
         for match in resource_pattern.finditer(content):
@@ -140,20 +137,12 @@ def _parse_resource_body(resource_type: str, body: str) -> dict:
     config = {}
 
     # Simple attribute extraction: attribute = "value" or attribute = value
-    simple_attrs = re.findall(
-        r'^\s*(\w+)\s*=\s*"([^"]*)"',
-        body,
-        re.MULTILINE
-    )
+    simple_attrs = re.findall(r'^\s*(\w+)\s*=\s*"([^"]*)"', body, re.MULTILINE)
     for attr, value in simple_attrs:
         config[attr] = value
 
     # Boolean/number attributes: attribute = true/false/123
-    bool_num_attrs = re.findall(
-        r'^\s*(\w+)\s*=\s*(true|false|\d+)\s*$',
-        body,
-        re.MULTILINE
-    )
+    bool_num_attrs = re.findall(r"^\s*(\w+)\s*=\s*(true|false|\d+)\s*$", body, re.MULTILINE)
     for attr, value in bool_num_attrs:
         if value == "true":
             config[attr] = True
@@ -166,7 +155,7 @@ def _parse_resource_body(resource_type: str, body: str) -> dict:
     if resource_type == "aws_s3_bucket":
         # Check for versioning block
         if "versioning {" in body:
-            versioning_match = re.search(r'versioning\s*\{([^}]+)\}', body)
+            versioning_match = re.search(r"versioning\s*\{([^}]+)\}", body)
             if versioning_match:
                 versioning_body = versioning_match.group(1)
                 if "enabled = true" in versioning_body:
@@ -182,11 +171,11 @@ def _parse_resource_body(resource_type: str, body: str) -> dict:
         if handler_match:
             config["handler"] = handler_match.group(1)
 
-        memory_match = re.search(r'memory_size\s*=\s*(\d+)', body)
+        memory_match = re.search(r"memory_size\s*=\s*(\d+)", body)
         if memory_match:
             config["memory_size"] = int(memory_match.group(1))
 
-        timeout_match = re.search(r'timeout\s*=\s*(\d+)', body)
+        timeout_match = re.search(r"timeout\s*=\s*(\d+)", body)
         if timeout_match:
             config["timeout"] = int(timeout_match.group(1))
 
@@ -339,9 +328,7 @@ def _get_dynamodb_config(
 
         config = {
             "name": table.get("TableName"),
-            "billing_mode": table.get("BillingModeSummary", {}).get(
-                "BillingMode", "PROVISIONED"
-            ),
+            "billing_mode": table.get("BillingModeSummary", {}).get("BillingMode", "PROVISIONED"),
         }
 
         # Extract hash key
@@ -374,10 +361,9 @@ def _get_sqs_config(
         queue_url = response.get("QueueUrl")
 
         # Get queue attributes
-        attrs = sqs.get_queue_attributes(
-            QueueUrl=queue_url,
-            AttributeNames=["All"]
-        ).get("Attributes", {})
+        attrs = sqs.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["All"]).get(
+            "Attributes", {}
+        )
 
         return {
             "name": queue_name,
@@ -514,17 +500,12 @@ def generate_config_verification_report(
     failed = total - passed
 
     total_checks = sum(len(v.config_checks) for v in verifications)
-    passed_checks = sum(
-        sum(1 for c in v.config_checks if c.passed)
-        for v in verifications
-    )
+    passed_checks = sum(sum(1 for c in v.config_checks if c.passed) for v in verifications)
 
     failed_resources = [
         {
             "resource": f"{v.resource_type}.{v.resource_name}",
-            "failed_checks": [
-                c.to_dict() for c in v.config_checks if not c.passed
-            ],
+            "failed_checks": [c.to_dict() for c in v.config_checks if not c.passed],
         }
         for v in verifications
         if not v.passed

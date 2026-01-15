@@ -55,9 +55,7 @@ class MultiVersionTester:
         self.versions = versions or DEFAULT_VERSIONS
         self.artifacts_dir = artifacts_dir
         self.logger = logger
-        self.results_file = (
-            artifacts_dir / "qa" / "version_matrix.json" if artifacts_dir else None
-        )
+        self.results_file = artifacts_dir / "qa" / "version_matrix.json" if artifacts_dir else None
         if self.results_file:
             self.results_file.parent.mkdir(parents=True, exist_ok=True)
         self._matrices: dict[str, MultiVersionMatrix] = {}
@@ -80,10 +78,7 @@ class MultiVersionTester:
         if not self.results_file:
             return
         try:
-            data = {
-                arch_hash: matrix.to_dict()
-                for arch_hash, matrix in self._matrices.items()
-            }
+            data = {arch_hash: matrix.to_dict() for arch_hash, matrix in self._matrices.items()}
             with open(self.results_file, "w") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
@@ -119,9 +114,7 @@ class MultiVersionTester:
 
             start_time = datetime.utcnow()
             try:
-                result = await run_validation_func(
-                    arch_hash, arch_data, version, timeout
-                )
+                result = await run_validation_func(arch_hash, arch_data, version, timeout)
 
                 version_result = VersionTestResult(
                     version=version,
@@ -217,7 +210,9 @@ class MultiVersionTester:
             "most_compatible_version": max(
                 self.versions,
                 key=lambda v: version_stats[v]["compatible"],
-            ) if total_archs > 0 else None,
+            )
+            if total_archs > 0
+            else None,
         }
 
 
@@ -268,6 +263,7 @@ async def pull_versions_parallel(versions: list[str]) -> dict[str, bool]:
     Returns:
         Dict mapping version to success status
     """
+
     async def pull_one(version: str) -> tuple[str, bool]:
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, check_version_available, version)

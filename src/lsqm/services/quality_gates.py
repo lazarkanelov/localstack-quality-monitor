@@ -70,7 +70,8 @@ class QualityGateEvaluator:
         if test_quality_scores:
             avg_quality = sum(test_quality_scores.values()) / len(test_quality_scores)
             low_quality_count = sum(
-                1 for score in test_quality_scores.values()
+                1
+                for score in test_quality_scores.values()
                 if score < self.config.min_test_quality_score
             )
 

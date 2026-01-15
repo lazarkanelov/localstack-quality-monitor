@@ -430,8 +430,7 @@ def extract_negative_tests_from_code(test_code: str) -> list[NegativeTestCase]:
 
     # Pattern to extract test function with docstring
     func_pattern = re.compile(
-        r'def\s+(test_\w+)\s*\([^)]*\):\s*(?:"""([^"]+)""")?',
-        re.MULTILINE | re.DOTALL
+        r'def\s+(test_\w+)\s*\([^)]*\):\s*(?:"""([^"]+)""")?', re.MULTILINE | re.DOTALL
     )
 
     for match in func_pattern.finditer(test_code):
@@ -440,14 +439,19 @@ def extract_negative_tests_from_code(test_code: str) -> list[NegativeTestCase]:
 
         # Check if this looks like a negative test
         is_negative = any(
-            re.search(pattern, test_name, re.IGNORECASE)
-            for pattern in negative_patterns
+            re.search(pattern, test_name, re.IGNORECASE) for pattern in negative_patterns
         )
 
         if is_negative:
             # Try to determine test type
-            test_type: Literal["invalid_input", "permission_denied", "resource_not_found",
-                              "rate_limit", "timeout", "edge_case"] = "edge_case"
+            test_type: Literal[
+                "invalid_input",
+                "permission_denied",
+                "resource_not_found",
+                "rate_limit",
+                "timeout",
+                "edge_case",
+            ] = "edge_case"
 
             if "invalid" in test_name.lower() or "empty" in test_name.lower():
                 test_type = "invalid_input"

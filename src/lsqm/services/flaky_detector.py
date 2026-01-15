@@ -113,10 +113,7 @@ class FlakyTestDetector:
         stable_tests = [r for r in records if not r.is_flaky and r.total_runs >= 3]
 
         # Calculate average pass rate
-        avg_pass_rate = (
-            sum(r.pass_rate for r in records) / len(records)
-            if records else 0.0
-        )
+        avg_pass_rate = sum(r.pass_rate for r in records) / len(records) if records else 0.0
 
         return {
             "total_tests_tracked": total_tests,
@@ -249,8 +246,7 @@ def run_tests_with_flaky_detection(
     flaky_info = {
         "total_runs": num_runs,
         "tests_with_inconsistent_results": sum(
-            1 for statuses in all_results.values()
-            if len(set(statuses)) > 1
+            1 for statuses in all_results.values() if len(set(statuses)) > 1
         ),
         "flaky_tests_detected": detector.get_flaky_tests(arch_hash),
     }

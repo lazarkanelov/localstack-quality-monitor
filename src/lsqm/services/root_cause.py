@@ -121,9 +121,7 @@ class RootCauseAnalyzer:
     ):
         self.artifacts_dir = artifacts_dir
         self.logger = logger
-        self.clusters_file = (
-            artifacts_dir / "qa" / "error_clusters.json" if artifacts_dir else None
-        )
+        self.clusters_file = artifacts_dir / "qa" / "error_clusters.json" if artifacts_dir else None
         if self.clusters_file:
             self.clusters_file.parent.mkdir(parents=True, exist_ok=True)
         self._clusters: dict[str, ErrorCluster] = {}
@@ -146,10 +144,7 @@ class RootCauseAnalyzer:
         if not self.clusters_file:
             return
         try:
-            data = {
-                cluster_id: cluster.to_dict()
-                for cluster_id, cluster in self._clusters.items()
-            }
+            data = {cluster_id: cluster.to_dict() for cluster_id, cluster in self._clusters.items()}
             with open(self.clusters_file, "w") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
@@ -271,9 +266,9 @@ class RootCauseAnalyzer:
 
                 # Get error message from various sources
                 error_message = (
-                    result.get("error_message") or
-                    result.get("failure_analysis", {}).get("error_message") or
-                    result.get("terraform_apply", {}).get("logs", "")[-500:]
+                    result.get("error_message")
+                    or result.get("failure_analysis", {}).get("error_message")
+                    or result.get("terraform_apply", {}).get("logs", "")[-500:]
                 )
 
                 if error_message:
@@ -319,10 +314,7 @@ class RootCauseAnalyzer:
         Returns:
             List of matching ErrorCluster
         """
-        return [
-            c for c in self._clusters.values()
-            if service in c.affected_services
-        ]
+        return [c for c in self._clusters.values() if service in c.affected_services]
 
     def get_report(self) -> dict:
         """Generate a root cause analysis report.
@@ -357,7 +349,9 @@ class RootCauseAnalyzer:
                             "occurrences": c.occurrences,
                             "suggested_fix": c.suggested_fix,
                         }
-                        for c in sorted(type_clusters, key=lambda x: x.occurrences, reverse=True)[:3]
+                        for c in sorted(type_clusters, key=lambda x: x.occurrences, reverse=True)[
+                            :3
+                        ]
                     ],
                 }
                 for error_type, type_clusters in by_type.items()

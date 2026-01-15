@@ -538,11 +538,9 @@ def _pre_create_localstack_override(work_dir: Path, endpoint: str) -> None:
     ]
 
     # Generate the endpoints block
-    endpoints_block = "\n".join(
-        [f'    {svc} = "{endpoint}"' for svc in sorted(supported_services)]
-    )
+    endpoints_block = "\n".join([f'    {svc} = "{endpoint}"' for svc in sorted(supported_services)])
 
-    override_content = f'''# Auto-generated LocalStack provider override
+    override_content = f"""# Auto-generated LocalStack provider override
 # This file configures Terraform to use LocalStack instead of AWS
 
 provider "aws" {{
@@ -557,7 +555,7 @@ provider "aws" {{
 {endpoints_block}
   }}
 }}
-'''
+"""
 
     override_file = work_dir / "localstack_providers_override.tf"
     override_file.write_text(override_content)
@@ -604,7 +602,7 @@ def _remove_aws_profile_references(work_dir: Path) -> None:
 
         # Also remove shared_credentials_file and shared_config_files if present
         content = re.sub(r'\s*shared_credentials_file\s*=\s*"[^"]*"\s*\n?', "\n", content)
-        content = re.sub(r'\s*shared_config_files\s*=\s*\[[^\]]*\]\s*\n?', "\n", content)
+        content = re.sub(r"\s*shared_config_files\s*=\s*\[[^\]]*\]\s*\n?", "\n", content)
 
         if content != original:
             tf_file.write_text(content)
@@ -635,31 +633,25 @@ def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
 
         # Find source_file references in archive_file data sources
         # e.g., source_file = "${path.module}/src/app.js"
-        source_files = re.findall(
-            r'source_file\s*=\s*"(?:\$\{path\.module\}/)?([^"]+)"', content
-        )
+        source_files = re.findall(r'source_file\s*=\s*"(?:\$\{path\.module\}/)?([^"]+)"', content)
 
         # Find source_dir references
         # e.g., source_dir = "${path.module}/src"
-        source_dirs = re.findall(
-            r'source_dir\s*=\s*"(?:\$\{path\.module\}/)?([^"]+)"', content
-        )
+        source_dirs = re.findall(r'source_dir\s*=\s*"(?:\$\{path\.module\}/)?([^"]+)"', content)
 
         # Also handle variable-based source paths by providing defaults
         # Pattern: source_file = var.source_path or source_dir = var.lambda_dir
-        var_source_files = re.findall(
-            r'source_file\s*=\s*var\.(\w+)', content
-        )
-        var_source_dirs = re.findall(
-            r'source_dir\s*=\s*var\.(\w+)', content
-        )
+        var_source_files = re.findall(r"source_file\s*=\s*var\.(\w+)", content)
+        var_source_dirs = re.findall(r"source_dir\s*=\s*var\.(\w+)", content)
 
         # For variable-based sources, create stub directories and update tfvars
         for var_name in var_source_files:
             stub_path = work_dir / "lambda_src" / "stub.js"
             stub_path.parent.mkdir(parents=True, exist_ok=True)
             if not stub_path.exists():
-                stub_path.write_text('exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n')
+                stub_path.write_text(
+                    'exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n'
+                )
                 stub_info.files.append(str(stub_path.relative_to(work_dir)))
                 stub_info.stub_types[str(stub_path.relative_to(work_dir))] = "js"
 
@@ -667,7 +659,7 @@ def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
             tfvars_file = work_dir / "terraform.tfvars"
             if tfvars_file.exists():
                 tfvars_content = tfvars_file.read_text()
-                if f'{var_name}' not in tfvars_content:
+                if f"{var_name}" not in tfvars_content:
                     tfvars_content += f'\n{var_name} = "lambda_src/stub.js"\n'
                     tfvars_file.write_text(tfvars_content)
 
@@ -676,7 +668,9 @@ def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
             stub_dir.mkdir(parents=True, exist_ok=True)
             stub_file = stub_dir / "index.js"
             if not stub_file.exists():
-                stub_file.write_text('exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n')
+                stub_file.write_text(
+                    'exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n'
+                )
                 stub_info.files.append(str(stub_file.relative_to(work_dir)))
                 stub_info.stub_types[str(stub_file.relative_to(work_dir))] = "js"
                 stub_info.directories.append("lambda_src")
@@ -685,7 +679,7 @@ def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
             tfvars_file = work_dir / "terraform.tfvars"
             if tfvars_file.exists():
                 tfvars_content = tfvars_file.read_text()
-                if f'{var_name}' not in tfvars_content:
+                if f"{var_name}" not in tfvars_content:
                     tfvars_content += f'\n{var_name} = "lambda_src"\n'
                     tfvars_file.write_text(tfvars_content)
 
@@ -702,13 +696,19 @@ def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
                 ext = file_path.suffix.lower()
                 stub_type = "unknown"
                 if ext == ".js":
-                    file_path.write_text('exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n')
+                    file_path.write_text(
+                        'exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n'
+                    )
                     stub_type = "js"
                 elif ext == ".py":
-                    file_path.write_text('def handler(event, context):\n    return {"statusCode": 200, "body": "stub"}\n')
+                    file_path.write_text(
+                        'def handler(event, context):\n    return {"statusCode": 200, "body": "stub"}\n'
+                    )
                     stub_type = "py"
                 elif ext == ".ts":
-                    file_path.write_text('export const handler = async (event: any) => { return { statusCode: 200, body: "stub" }; };\n')
+                    file_path.write_text(
+                        'export const handler = async (event: any) => { return { statusCode: 200, body: "stub" }; };\n'
+                    )
                     stub_type = "ts"
                 else:
                     file_path.write_text("# stub file\n")
@@ -768,10 +768,10 @@ def _generate_missing_tfvars(work_dir: Path) -> dict[str, str]:
         for quoted_name, unquoted_name, var_body in var_blocks:
             var_name = quoted_name or unquoted_name
             # Check if variable has a default
-            has_default = re.search(r'\bdefault\s*=', var_body)
+            has_default = re.search(r"\bdefault\s*=", var_body)
             if not has_default:
                 # Extract type if available
-                type_match = re.search(r'\btype\s*=\s*(\w+)', var_body)
+                type_match = re.search(r"\btype\s*=\s*(\w+)", var_body)
                 var_type = type_match.group(1) if type_match else "string"
                 required_vars[var_name] = {"type": var_type}
 
@@ -784,7 +784,7 @@ def _generate_missing_tfvars(work_dir: Path) -> dict[str, str]:
     if tfvars_file.exists():
         existing_content = tfvars_file.read_text()
         # Find already defined variables
-        existing_vars = set(re.findall(r'^(\w+)\s*=', existing_content, re.MULTILINE))
+        existing_vars = set(re.findall(r"^(\w+)\s*=", existing_content, re.MULTILINE))
 
     # Generate stub values for missing required variables
     new_vars = []
@@ -856,11 +856,11 @@ def _generate_missing_tfvars(work_dir: Path) -> dict[str, str]:
                 value = '"lsqm"'
             elif "context" in var_lower:
                 # For null-label context pattern
-                value = '{}'
+                value = "{}"
             else:
                 value = f'"lsqm-{var_name}"'
 
-        new_vars.append(f'{var_name} = {value}')
+        new_vars.append(f"{var_name} = {value}")
         generated_vars[var_name] = value
 
     if new_vars:
@@ -1066,7 +1066,7 @@ def _remove_assume_role_configuration(work_dir: Path) -> None:
         # Remove assume_role blocks from provider blocks
         # Pattern matches: assume_role { ... }
         content = re.sub(
-            r'\s*assume_role\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',
+            r"\s*assume_role\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}",
             "",
             content,
             flags=re.DOTALL,
@@ -1074,7 +1074,7 @@ def _remove_assume_role_configuration(work_dir: Path) -> None:
 
         # Also remove assume_role_with_web_identity blocks
         content = re.sub(
-            r'\s*assume_role_with_web_identity\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',
+            r"\s*assume_role_with_web_identity\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}",
             "",
             content,
             flags=re.DOTALL,
@@ -1096,7 +1096,7 @@ def _remove_provider_default_tags(work_dir: Path) -> None:
 
         # Remove default_tags blocks from provider blocks
         content = re.sub(
-            r'\s*default_tags\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',
+            r"\s*default_tags\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}",
             "",
             content,
             flags=re.DOTALL,
@@ -1206,7 +1206,7 @@ def _fix_dangling_references(work_dir: Path, removed_resources: list[RemovedReso
 
             # Replace references like: aws_waf_rule.example.id -> ""
             content = re.sub(
-                rf'\b{re.escape(full_ref)}\.[\w.]+',
+                rf"\b{re.escape(full_ref)}\.[\w.]+",
                 '""',
                 content,
             )
@@ -1214,7 +1214,7 @@ def _fix_dangling_references(work_dir: Path, removed_resources: list[RemovedReso
             # Also handle data source references like: data.aws_waf_rule.example.id
             data_ref = f"data.{res.resource_type}.{res.resource_name}"
             content = re.sub(
-                rf'\b{re.escape(data_ref)}\.[\w.]+',
+                rf"\b{re.escape(data_ref)}\.[\w.]+",
                 '""',
                 content,
             )
@@ -1242,10 +1242,10 @@ def _remove_null_label_dependencies(work_dir: Path) -> None:
     # Check for various null-label patterns
     null_label_patterns = [
         "cloudposse/label/null",  # Direct module reference
-        "context = ",             # Context being passed
-        r"\bvar\.context\b",      # Context variable reference
-        r"\bmodule\.this\b",      # Common null-label output
-        r"\blocal\.context\b",    # Local context reference
+        "context = ",  # Context being passed
+        r"\bvar\.context\b",  # Context variable reference
+        r"\bmodule\.this\b",  # Common null-label output
+        r"\blocal\.context\b",  # Local context reference
     ]
 
     for pattern in null_label_patterns:
@@ -1265,7 +1265,7 @@ def _remove_null_label_dependencies(work_dir: Path) -> None:
             else:
                 vars_content = ""
 
-            vars_content += '''
+            vars_content += """
 
 # Auto-generated context variable for null-label compatibility
 # Includes both standard null-label attributes and common extended attributes
@@ -1297,7 +1297,7 @@ variable "context" {
   }
   description = "Single object for setting entire context at once"
 }
-'''
+"""
             vars_file.write_text(vars_content)
 
 
@@ -1358,7 +1358,9 @@ def _preprocess_terraform(work_dir: Path, original_services: set[str]) -> Prepro
 
     warnings = []
     if removed_services:
-        removed_pct = len(removed_services) / len(original_services) * 100 if original_services else 0
+        removed_pct = (
+            len(removed_services) / len(original_services) * 100 if original_services else 0
+        )
         if removed_pct > 30:
             warnings.append(
                 f"Significant service reduction: {len(removed_services)} services "
@@ -1651,7 +1653,10 @@ async def _run_terraform(
         )
 
     except TimeoutError:
-        return (TerraformApplyResult(success=False, logs="Terraform timed out"), preprocessing_delta)
+        return (
+            TerraformApplyResult(success=False, logs="Terraform timed out"),
+            preprocessing_delta,
+        )
     except Exception as e:
         return (TerraformApplyResult(success=False, logs=str(e)), preprocessing_delta)
 

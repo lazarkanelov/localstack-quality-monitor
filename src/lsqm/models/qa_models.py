@@ -10,6 +10,7 @@ from typing import Literal
 
 class QualityGateStatus(str, Enum):
     """Quality gate evaluation result."""
+
     PASSED = "PASSED"
     FAILED = "FAILED"
     WARNING = "WARNING"
@@ -21,8 +22,14 @@ class NegativeTestCase:
 
     name: str  # e.g., "test_invalid_bucket_name"
     description: str
-    test_type: Literal["invalid_input", "permission_denied", "resource_not_found",
-                       "rate_limit", "timeout", "edge_case"]
+    test_type: Literal[
+        "invalid_input",
+        "permission_denied",
+        "resource_not_found",
+        "rate_limit",
+        "timeout",
+        "edge_case",
+    ]
     service: str  # e.g., "s3"
     operation: str  # e.g., "create_bucket"
     expected_error: str | None = None  # Expected error code/type
@@ -169,7 +176,9 @@ class TestStabilityRecord:
     failed_runs: int = 0
     pass_rate: float = 0.0
     is_flaky: bool = False
-    last_results: list[str] = field(default_factory=list)  # Last N results: ["passed", "failed", ...]
+    last_results: list[str] = field(
+        default_factory=list
+    )  # Last N results: ["passed", "failed", ...]
     first_seen: datetime | None = None
     last_seen: datetime | None = None
 
@@ -198,7 +207,9 @@ class TestStabilityRecord:
             pass_rate=data.get("pass_rate", 0.0),
             is_flaky=data.get("is_flaky", False),
             last_results=data.get("last_results", []),
-            first_seen=datetime.fromisoformat(data["first_seen"]) if data.get("first_seen") else None,
+            first_seen=datetime.fromisoformat(data["first_seen"])
+            if data.get("first_seen")
+            else None,
             last_seen=datetime.fromisoformat(data["last_seen"]) if data.get("last_seen") else None,
         )
 
@@ -218,10 +229,7 @@ class TestStabilityRecord:
             self.last_results = self.last_results[-10:]
 
         # Detect flakiness: if pass rate is between 10% and 90% with at least 3 runs
-        self.is_flaky = (
-            self.total_runs >= 3 and
-            0.1 < self.pass_rate < 0.9
-        )
+        self.is_flaky = self.total_runs >= 3 and 0.1 < self.pass_rate < 0.9
 
         self.last_seen = datetime.utcnow()
         if self.first_seen is None:
@@ -361,7 +369,9 @@ class ErrorCluster:
             sample_errors=data.get("sample_errors", []),
             suggested_fix=data.get("suggested_fix"),
             root_cause=data.get("root_cause"),
-            first_seen=datetime.fromisoformat(data["first_seen"]) if data.get("first_seen") else None,
+            first_seen=datetime.fromisoformat(data["first_seen"])
+            if data.get("first_seen")
+            else None,
             last_seen=datetime.fromisoformat(data["last_seen"]) if data.get("last_seen") else None,
         )
 
@@ -371,8 +381,9 @@ class PerformanceBaseline:
     """Performance baseline for an architecture or operation."""
 
     arch_hash: str
-    metric_type: Literal["terraform_init", "terraform_apply", "terraform_destroy",
-                         "pytest", "total_validation"]
+    metric_type: Literal[
+        "terraform_init", "terraform_apply", "terraform_destroy", "pytest", "total_validation"
+    ]
     baseline_duration: float  # seconds
     std_deviation: float = 0.0
     sample_count: int = 0
@@ -426,8 +437,11 @@ class PerformanceBaseline:
 
             # Update std deviation (Welford's algorithm)
             self.std_deviation = math.sqrt(
-                ((self.sample_count - 1) * self.std_deviation**2 +
-                 (duration - old_avg) * (duration - self.baseline_duration)) / self.sample_count
+                (
+                    (self.sample_count - 1) * self.std_deviation**2
+                    + (duration - old_avg) * (duration - self.baseline_duration)
+                )
+                / self.sample_count
             )
 
             self.min_duration = min(self.min_duration, duration)

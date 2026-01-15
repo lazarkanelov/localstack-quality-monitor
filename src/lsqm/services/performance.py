@@ -53,8 +53,9 @@ class PerformanceTracker:
     def _get_key(
         self,
         arch_hash: str,
-        metric_type: Literal["terraform_init", "terraform_apply", "terraform_destroy",
-                            "pytest", "total_validation"],
+        metric_type: Literal[
+            "terraform_init", "terraform_apply", "terraform_destroy", "pytest", "total_validation"
+        ],
     ) -> str:
         """Get unique key for a baseline."""
         return f"{arch_hash}:{metric_type}"
@@ -62,8 +63,9 @@ class PerformanceTracker:
     def record_metric(
         self,
         arch_hash: str,
-        metric_type: Literal["terraform_init", "terraform_apply", "terraform_destroy",
-                            "pytest", "total_validation"],
+        metric_type: Literal[
+            "terraform_init", "terraform_apply", "terraform_destroy", "pytest", "total_validation"
+        ],
         duration: float,
     ) -> PerformanceBaseline:
         """Record a performance metric.
@@ -119,10 +121,14 @@ class PerformanceTracker:
             updated.append(self.record_metric(arch_hash, "terraform_init", terraform_init_duration))
 
         if terraform_apply_duration is not None:
-            updated.append(self.record_metric(arch_hash, "terraform_apply", terraform_apply_duration))
+            updated.append(
+                self.record_metric(arch_hash, "terraform_apply", terraform_apply_duration)
+            )
 
         if terraform_destroy_duration is not None:
-            updated.append(self.record_metric(arch_hash, "terraform_destroy", terraform_destroy_duration))
+            updated.append(
+                self.record_metric(arch_hash, "terraform_destroy", terraform_destroy_duration)
+            )
 
         if pytest_duration is not None:
             updated.append(self.record_metric(arch_hash, "pytest", pytest_duration))
@@ -135,8 +141,9 @@ class PerformanceTracker:
     def get_baseline(
         self,
         arch_hash: str,
-        metric_type: Literal["terraform_init", "terraform_apply", "terraform_destroy",
-                            "pytest", "total_validation"],
+        metric_type: Literal[
+            "terraform_init", "terraform_apply", "terraform_destroy", "pytest", "total_validation"
+        ],
     ) -> PerformanceBaseline | None:
         """Get baseline for a specific metric.
 
@@ -153,8 +160,9 @@ class PerformanceTracker:
     def is_regression(
         self,
         arch_hash: str,
-        metric_type: Literal["terraform_init", "terraform_apply", "terraform_destroy",
-                            "pytest", "total_validation"],
+        metric_type: Literal[
+            "terraform_init", "terraform_apply", "terraform_destroy", "pytest", "total_validation"
+        ],
         current_duration: float,
         threshold_multiplier: float = 2.0,
     ) -> bool:
@@ -196,14 +204,16 @@ class PerformanceTracker:
 
             # Check if last duration is in the slow tail
             if baseline.last_duration > baseline.baseline_duration + baseline.std_deviation:
-                slow_ops.append({
-                    "arch_hash": baseline.arch_hash,
-                    "metric_type": baseline.metric_type,
-                    "last_duration": baseline.last_duration,
-                    "baseline_duration": baseline.baseline_duration,
-                    "deviation": baseline.last_duration - baseline.baseline_duration,
-                    "trend": baseline.trend,
-                })
+                slow_ops.append(
+                    {
+                        "arch_hash": baseline.arch_hash,
+                        "metric_type": baseline.metric_type,
+                        "last_duration": baseline.last_duration,
+                        "baseline_duration": baseline.baseline_duration,
+                        "deviation": baseline.last_duration - baseline.baseline_duration,
+                        "trend": baseline.trend,
+                    }
+                )
 
         return sorted(slow_ops, key=lambda x: x["deviation"], reverse=True)
 
@@ -231,7 +241,9 @@ class PerformanceTracker:
             valid_baselines = [b for b in baselines if b.sample_count >= 3]
 
             if valid_baselines:
-                avg_duration = sum(b.baseline_duration for b in valid_baselines) / len(valid_baselines)
+                avg_duration = sum(b.baseline_duration for b in valid_baselines) / len(
+                    valid_baselines
+                )
                 min_duration = min(b.min_duration for b in valid_baselines)
                 max_duration = max(b.max_duration for b in valid_baselines)
 
@@ -245,23 +257,37 @@ class PerformanceTracker:
                 # Find degrading/improving
                 for b in valid_baselines:
                     if b.trend == "degrading":
-                        report["degrading_operations"].append({
-                            "arch_hash": b.arch_hash,
-                            "metric_type": b.metric_type,
-                            "baseline": b.baseline_duration,
-                            "last": b.last_duration,
-                            "increase_pct": ((b.last_duration - b.baseline_duration) / b.baseline_duration * 100)
-                            if b.baseline_duration > 0 else 0,
-                        })
+                        report["degrading_operations"].append(
+                            {
+                                "arch_hash": b.arch_hash,
+                                "metric_type": b.metric_type,
+                                "baseline": b.baseline_duration,
+                                "last": b.last_duration,
+                                "increase_pct": (
+                                    (b.last_duration - b.baseline_duration)
+                                    / b.baseline_duration
+                                    * 100
+                                )
+                                if b.baseline_duration > 0
+                                else 0,
+                            }
+                        )
                     elif b.trend == "improving":
-                        report["improving_operations"].append({
-                            "arch_hash": b.arch_hash,
-                            "metric_type": b.metric_type,
-                            "baseline": b.baseline_duration,
-                            "last": b.last_duration,
-                            "decrease_pct": ((b.baseline_duration - b.last_duration) / b.baseline_duration * 100)
-                            if b.baseline_duration > 0 else 0,
-                        })
+                        report["improving_operations"].append(
+                            {
+                                "arch_hash": b.arch_hash,
+                                "metric_type": b.metric_type,
+                                "baseline": b.baseline_duration,
+                                "last": b.last_duration,
+                                "decrease_pct": (
+                                    (b.baseline_duration - b.last_duration)
+                                    / b.baseline_duration
+                                    * 100
+                                )
+                                if b.baseline_duration > 0
+                                else 0,
+                            }
+                        )
 
         return report
 

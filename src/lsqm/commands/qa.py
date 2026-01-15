@@ -68,7 +68,9 @@ def error_clusters(ctx, error_type, limit, json_output):
 
         click.echo("\nErrors by type:")
         for err_type, data in report["errors_by_type"].items():
-            click.echo(f"  {err_type}: {data['cluster_count']} clusters, {data['total_occurrences']} occurrences")
+            click.echo(
+                f"  {err_type}: {data['cluster_count']} clusters, {data['total_occurrences']} occurrences"
+            )
 
         if report["actionable_fixes"]:
             click.echo("\nActionable fixes:")
@@ -107,12 +109,16 @@ def performance(ctx, arch, json_output):
         if report["degrading_operations"]:
             click.echo("\nDegrading operations:")
             for op in report["degrading_operations"][:5]:
-                click.echo(f"  - {op['arch_hash'][:8]} {op['metric_type']}: +{op['increase_pct']:.1f}%")
+                click.echo(
+                    f"  - {op['arch_hash'][:8]} {op['metric_type']}: +{op['increase_pct']:.1f}%"
+                )
 
         if report["improving_operations"]:
             click.echo("\nImproving operations:")
             for op in report["improving_operations"][:5]:
-                click.echo(f"  - {op['arch_hash'][:8]} {op['metric_type']}: -{op['decrease_pct']:.1f}%")
+                click.echo(
+                    f"  - {op['arch_hash'][:8]} {op['metric_type']}: -{op['decrease_pct']:.1f}%"
+                )
 
 
 @qa_group.command("gates")
@@ -206,7 +212,9 @@ def cache(ctx, clear, arch, stats):
 
             total = len(cache_data)
             passed = sum(1 for c in cache_data.values() if c.get("last_status") == "PASSED")
-            failed = sum(1 for c in cache_data.values() if c.get("last_status") in ["FAILED", "ERROR"])
+            failed = sum(
+                1 for c in cache_data.values() if c.get("last_status") in ["FAILED", "ERROR"]
+            )
 
             click.echo(f"Total cached: {total}")
             click.echo(f"Passed: {passed}")
