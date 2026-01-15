@@ -562,6 +562,17 @@ def analyze_failure(
             analysis["is_localstack_issue"] = True
             analysis["category"] = "service_gap"
 
+        # Pattern 14: LocalStack Pro feature required
+        if "not included in your current license plan" in terraform_output.lower():
+            # Extract service name
+            service_match = re.search(r"service\s+(\w+)\s+is", terraform_output.lower())
+            service_name = service_match.group(1) if service_match else "unknown"
+            analysis["error_message"] = (
+                f"Service '{service_name}' requires LocalStack Pro license"
+            )
+            analysis["is_localstack_issue"] = True
+            analysis["category"] = "pro_feature"
+
     # === DETECT AFFECTED SERVICE ===
     combined = f"{terraform_output}\n{container_logs}".lower()
     service_patterns = [
