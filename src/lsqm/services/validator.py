@@ -236,6 +236,17 @@ async def _validate_single(
         arch_services = set(arch_data.get("services", []))
         arch_services.update(["iam", "sts"])  # Required for Terraform provider
 
+        # Add companion services that are commonly used together
+        companion_services = {
+            "cloudwatch": ["events", "logs"],  # EventBridge + CloudWatch Logs
+            "lambda": ["logs"],  # Lambda needs CloudWatch Logs
+            "apigateway": ["apigatewayv2"],  # HTTP APIs
+            "s3": ["s3control"],  # S3 Control for bucket operations
+        }
+        for service in list(arch_services):
+            if service in companion_services:
+                arch_services.update(companion_services[service])
+
         client = docker.from_env()
         container = client.containers.run(
             f"localstack/localstack:{localstack_version}",
