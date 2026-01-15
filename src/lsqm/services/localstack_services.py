@@ -119,6 +119,27 @@ def extract_services_from_terraform(tf_content: str) -> set[str]:
     return services
 
 
+def extract_services_from_terraform_dir(tf_dir) -> set[str]:
+    """Extract AWS services used in Terraform files in a directory.
+
+    Args:
+        tf_dir: Path to directory containing Terraform files
+
+    Returns:
+        Set of AWS service names
+    """
+    from pathlib import Path
+
+    services = set()
+    tf_path = Path(tf_dir)
+
+    for tf_file in tf_path.glob("*.tf"):
+        content = tf_file.read_text()
+        services.update(extract_services_from_terraform(content))
+
+    return services
+
+
 def is_service_supported(service: str) -> bool:
     """Check if a service is supported by LocalStack Community."""
     return service.lower() in LOCALSTACK_COMMUNITY_SERVICES
@@ -162,20 +183,18 @@ def is_standalone_architecture(tf_content: str) -> tuple[bool, str]:
     # Check for required variables without defaults
     # Pattern: variable "name" { ... } without default = ...
     variable_blocks = re.findall(
-        r'variable\s+"([^"]+)"\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}',
-        tf_content,
-        re.DOTALL
+        r'variable\s+"([^"]+)"\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}', tf_content, re.DOTALL
     )
 
     required_vars = []
     for var_name, var_body in variable_blocks:
         # Skip if it has a default
-        if re.search(r'\bdefault\s*=', var_body):
+        if re.search(r"\bdefault\s*=", var_body):
             continue
         # Skip if it's nullable or optional
-        if re.search(r'\bnullable\s*=\s*true', var_body):
+        if re.search(r"\bnullable\s*=\s*true", var_body):
             continue
-        if re.search(r'\boptional\s*\(', var_body):
+        if re.search(r"\boptional\s*\(", var_body):
             continue
         required_vars.append(var_name)
 
@@ -188,17 +207,14 @@ def is_standalone_architecture(tf_content: str) -> tuple[bool, str]:
 
     # Only terraform_remote_state requires external resources
     # (aws_caller_identity, aws_region, aws_availability_zones are OK)
-    problematic_data = [
-        ds for ds in data_sources
-        if ds == "terraform_remote_state"
-    ]
+    problematic_data = [ds for ds in data_sources if ds == "terraform_remote_state"]
 
     if problematic_data:
         return False, f"Requires external state: {', '.join(problematic_data)}"
 
     # Check for context variable pattern (Cloud Posse null-label modules)
     # These modules expect a context object passed from parent module
-    if re.search(r'\bvar\.context\.\w+', tf_content):
+    if re.search(r"\bvar\.context\.\w+", tf_content):
         return False, "Requires external context object (null-label pattern)"
 
     return True, ""

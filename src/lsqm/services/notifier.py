@@ -28,9 +28,7 @@ def send_slack_notification(
     asyncio.set_event_loop(loop)
 
     try:
-        result = loop.run_until_complete(
-            _send_async(webhook_url, run_data, artifact_repo, logger)
-        )
+        result = loop.run_until_complete(_send_async(webhook_url, run_data, artifact_repo, logger))
     finally:
         loop.close()
 
@@ -99,23 +97,27 @@ async def _send_async(
 
     # Add regression alert
     if has_regressions:
-        blocks.append({
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"⚠️ *{len(regressions)} REGRESSIONS DETECTED*",
-            },
-        })
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"⚠️ *{len(regressions)} REGRESSIONS DETECTED*",
+                },
+            }
+        )
 
     # Add report link
     report_url = f"https://github.com/{artifact_repo}/blob/main/reports/latest/index.html"
-    blocks.append({
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": f"<{report_url}|View Full Report>",
-        },
-    })
+    blocks.append(
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"<{report_url}|View Full Report>",
+            },
+        }
+    )
 
     payload = {
         "attachments": [

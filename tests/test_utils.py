@@ -120,7 +120,9 @@ class TestLoadConfig:
         with open(config_file, "w") as f:
             yaml.dump(yaml_config, f)
 
-        config = load_config(config_file)
+        # Pass explicit non-existent sources_path to prevent loading ./sources.yaml
+        nonexistent_sources = temp_dir / "nonexistent_sources.yaml"
+        config = load_config(config_file, sources_path=nonexistent_sources)
 
         assert config.anthropic_api_key == "sk-ant-yaml-key"
         assert config.github_token == "ghp_yaml_token"
@@ -142,7 +144,9 @@ class TestLoadConfig:
         # Set env var to override
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-override")
 
-        config = load_config(config_file)
+        # Pass explicit non-existent sources_path to prevent loading ./sources.yaml
+        nonexistent_sources = temp_dir / "nonexistent_sources.yaml"
+        config = load_config(config_file, sources_path=nonexistent_sources)
 
         assert config.anthropic_api_key == "sk-ant-override"  # From env
         assert config.github_token == "ghp_yaml_token"  # From YAML
@@ -225,9 +229,7 @@ class TestComputeArchitectureHash:
 
     def test_hash_single_file(self):
         """Test computing hash for single file."""
-        tf_files = {
-            "main.tf": 'resource "aws_vpc" "main" { cidr_block = "10.0.0.0/16" }'
-        }
+        tf_files = {"main.tf": 'resource "aws_vpc" "main" { cidr_block = "10.0.0.0/16" }'}
 
         hash1 = compute_architecture_hash(tf_files)
 
@@ -247,9 +249,7 @@ class TestComputeArchitectureHash:
 
     def test_hash_deterministic(self):
         """Test that hash is deterministic."""
-        tf_files = {
-            "main.tf": 'resource "aws_s3_bucket" "test" { bucket = "my-bucket" }'
-        }
+        tf_files = {"main.tf": 'resource "aws_s3_bucket" "test" { bucket = "my-bucket" }'}
 
         hash1 = compute_architecture_hash(tf_files)
         hash2 = compute_architecture_hash(tf_files)

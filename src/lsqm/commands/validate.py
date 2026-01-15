@@ -107,7 +107,9 @@ def _validate_impl(
         status = vr.status.value
         duration = vr.duration_seconds
         name = architectures.get(vr.arch_hash, {}).get("name", vr.arch_hash[:8])
-        click.echo(f"  [{i}/{len(to_validate)}] {vr.arch_hash[:8]} {name}: {status} ({duration:.0f}s)")
+        click.echo(
+            f"  [{i}/{len(to_validate)}] {vr.arch_hash[:8]} {name}: {status} ({duration:.0f}s)"
+        )
         if vr.pytest_results and vr.pytest_results.failed > 0:
             click.echo(f"    └─ {vr.pytest_results.failed}/{vr.pytest_results.total} tests failed")
 

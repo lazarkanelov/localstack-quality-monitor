@@ -2,7 +2,7 @@
 
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 
 from github import Auth, Github, GithubException, RateLimitExceededException
 
@@ -206,14 +206,10 @@ def _discover_via_search(
                 reset_time = search_limit.reset
                 # Handle timezone-aware datetime
                 if reset_time.tzinfo is not None:
-                    from datetime import timezone
-                    now = datetime.now(timezone.utc)
+                    now = datetime.now(UTC)
                 else:
                     now = datetime.utcnow()
-                wait_time = max(
-                    (reset_time - now).total_seconds(),
-                    SEARCH_RATE_LIMIT_BACKOFF
-                )
+                wait_time = max((reset_time - now).total_seconds(), SEARCH_RATE_LIMIT_BACKOFF)
                 wait_time = min(wait_time, 120)  # Cap at 2 minutes
             else:
                 wait_time = INITIAL_BACKOFF * (2 ** (retries - 1))

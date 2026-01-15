@@ -20,6 +20,7 @@ def status(ctx, output_format):
 
     if output_format == "json":
         import json
+
         click.echo(json.dumps(result, indent=2))
     else:
         _print_status(result)
@@ -42,7 +43,9 @@ def _status_impl(ctx) -> dict:
 
     total_archs = len(architectures)
     with_apps = sum(1 for a in architectures.values() if a.get("has_app"))
-    pending = sum(1 for a in architectures.values() if not a.get("has_app") and not a.get("skipped"))
+    pending = sum(
+        1 for a in architectures.values() if not a.get("has_app") and not a.get("skipped")
+    )
     skipped = sum(1 for a in architectures.values() if a.get("skipped"))
 
     # Load latest run
@@ -54,18 +57,23 @@ def _status_impl(ctx) -> dict:
             "run_id": latest_run.get("run_id", ""),
             "date": latest_run.get("started_at", "")[:10],
             "pass_rate": (summary.get("passed", 0) / summary.get("total", 1) * 100)
-            if summary.get("total", 0) > 0 else 0,
+            if summary.get("total", 0) > 0
+            else 0,
         }
 
     # Load service trends
     trends = load_service_trends(artifacts_dir)
     service_stats = []
-    for service, data in sorted(trends.items(), key=lambda x: x[1].get("current_pass_rate", 0), reverse=True):
-        service_stats.append({
-            "name": service,
-            "pass_rate": data.get("current_pass_rate", 0) * 100,
-            "trend": data.get("trend", "stable"),
-        })
+    for service, data in sorted(
+        trends.items(), key=lambda x: x[1].get("current_pass_rate", 0), reverse=True
+    ):
+        service_stats.append(
+            {
+                "name": service,
+                "pass_rate": data.get("current_pass_rate", 0) * 100,
+                "trend": data.get("trend", "stable"),
+            }
+        )
 
     return {
         "architectures": {
@@ -104,5 +112,7 @@ def _print_status(result: dict) -> None:
     if services:
         click.echo("Top Services:")
         for svc in services[:5]:
-            trend_icon = {"improving": "↑", "declining": "↓", "stable": "→"}.get(svc.get("trend", "stable"), "→")
+            trend_icon = {"improving": "↑", "declining": "↓", "stable": "→"}.get(
+                svc.get("trend", "stable"), "→"
+            )
             click.echo(f"  {svc['name']}: {svc['pass_rate']:.0f}% {trend_icon}")

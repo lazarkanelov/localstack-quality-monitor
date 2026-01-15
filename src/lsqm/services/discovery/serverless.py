@@ -79,14 +79,15 @@ def _find_aws_examples(repo, logger: logging.Logger | None) -> list[dict]:
                 try:
                     dir_contents = repo.get_contents(content.path)
                     has_serverless = any(
-                        c.name in ("serverless.yml", "serverless.yaml")
-                        for c in dir_contents
+                        c.name in ("serverless.yml", "serverless.yaml") for c in dir_contents
                     )
                     if has_serverless:
-                        examples.append({
-                            "path": content.path,
-                            "name": content.name,
-                        })
+                        examples.append(
+                            {
+                                "path": content.path,
+                                "name": content.name,
+                            }
+                        )
                 except Exception:
                     pass
 
@@ -125,7 +126,7 @@ def _process_serverless_example(
 
         # Count resources
         all_content = "\n".join(tf_files.values())
-        resource_count = all_content.count("resource \"aws_")
+        resource_count = all_content.count('resource "aws_')
 
         return Architecture(
             hash=content_hash,

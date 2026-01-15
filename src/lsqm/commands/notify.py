@@ -31,9 +31,7 @@ def notify(ctx, run_id, webhook):
         click.echo(f"Notification failed: {result.get('error', 'unknown')}")
 
 
-def _notify_impl(
-    ctx, run=None, run_id: str = "latest", webhook_url: str | None = None
-) -> dict:
+def _notify_impl(ctx, run=None, run_id: str = "latest", webhook_url: str | None = None) -> dict:
     """Implementation of notify logic."""
     from lsqm.services.git_ops import load_run_results
     from lsqm.services.notifier import send_slack_notification

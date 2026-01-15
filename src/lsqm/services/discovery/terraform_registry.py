@@ -157,7 +157,7 @@ async def _fetch_module_details(
                 services = list(extract_services_from_terraform(all_content))
 
                 # Count resources
-                resource_count = all_content.count("resource \"aws_")
+                resource_count = all_content.count('resource "aws_')
 
                 return Architecture(
                     hash=content_hash,

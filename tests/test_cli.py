@@ -1,6 +1,5 @@
 """Tests for LSQM CLI commands."""
 
-
 import pytest
 from click.testing import CliRunner
 
@@ -91,9 +90,7 @@ class TestMineCommand:
 
     def test_mine_with_sources(self, cli_runner):
         """Test mine with specific sources."""
-        result = cli_runner.invoke(
-            main, ["--dry-run", "mine", "--source", "github_orgs"]
-        )
+        result = cli_runner.invoke(main, ["--dry-run", "mine", "--source", "github_orgs"])
 
         assert result.exit_code == 0
         assert "github_orgs" in result.output
@@ -112,9 +109,7 @@ class TestGenerateCommand:
 
     def test_generate_dry_run(self, cli_runner):
         """Test generate in dry-run mode."""
-        result = cli_runner.invoke(
-            main, ["--dry-run", "generate", "--budget", "50000"]
-        )
+        result = cli_runner.invoke(main, ["--dry-run", "generate", "--budget", "50000"])
 
         assert result.exit_code == 0
         assert "DRY RUN" in result.output
@@ -326,8 +321,6 @@ class TestCLIGlobalOptions:
 
     def test_localstack_version_option(self, cli_runner):
         """Test --localstack-version option."""
-        result = cli_runner.invoke(
-            main, ["--localstack-version", "3.0.0", "--dry-run", "validate"]
-        )
+        result = cli_runner.invoke(main, ["--localstack-version", "3.0.0", "--dry-run", "validate"])
 
         assert result.exit_code == 0

@@ -103,11 +103,16 @@ def run(ctx):
     if ctx.verbose:
         import json
 
-        click.echo(json.dumps({
-            "run_id": pipeline_run.run_id,
-            "stages": stages_status,
-            "summary": pipeline_run.summary.to_dict(),
-        }, indent=2))
+        click.echo(
+            json.dumps(
+                {
+                    "run_id": pipeline_run.run_id,
+                    "stages": stages_status,
+                    "summary": pipeline_run.summary.to_dict(),
+                },
+                indent=2,
+            )
+        )
 
     sys.exit(exit_code)
 
@@ -115,12 +120,14 @@ def run(ctx):
 def _run_sync(ctx, run: Run) -> dict:
     """Execute sync stage."""
     from lsqm.commands.sync import _sync_impl
+
     return _sync_impl(ctx)
 
 
 def _run_mine(ctx, run: Run) -> dict:
     """Execute mine stage."""
     from lsqm.commands.mine import _mine_impl
+
     result = _mine_impl(ctx, limit=0)
     run.summary.new_architectures = result.get("new_count", 0)
     return result
@@ -129,6 +136,7 @@ def _run_mine(ctx, run: Run) -> dict:
 def _run_generate(ctx, run: Run) -> dict:
     """Execute generate stage."""
     from lsqm.commands.generate import _generate_impl
+
     result = _generate_impl(ctx, budget=ctx.config.token_budget)
     run.summary.tokens_used = result.get("tokens_used", 0)
     return result
@@ -137,6 +145,7 @@ def _run_generate(ctx, run: Run) -> dict:
 def _run_validate(ctx, run: Run) -> dict:
     """Execute validate stage."""
     from lsqm.commands.validate import _validate_impl
+
     result = _validate_impl(ctx, run_id=run.run_id)
     run.summary.total = result.get("total", 0)
     run.summary.passed = result.get("passed", 0)
@@ -150,16 +159,19 @@ def _run_validate(ctx, run: Run) -> dict:
 def _run_report(ctx, run: Run) -> dict:
     """Execute report stage."""
     from lsqm.commands.report import _report_impl
+
     return _report_impl(ctx, run_id=run.run_id)
 
 
 def _run_push(ctx, run: Run) -> dict:
     """Execute push stage."""
     from lsqm.commands.push import _push_impl
+
     return _push_impl(ctx, run=run)
 
 
 def _run_notify(ctx, run: Run) -> dict:
     """Execute notify stage."""
     from lsqm.commands.notify import _notify_impl
+
     return _notify_impl(ctx, run=run)

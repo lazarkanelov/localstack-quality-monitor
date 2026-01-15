@@ -6,9 +6,17 @@ from lsqm.cli import pass_context
 
 
 @click.command()
-@click.option("--containers/--no-containers", default=True, help="Remove stale LocalStack containers")
+@click.option(
+    "--containers/--no-containers", default=True, help="Remove stale LocalStack containers"
+)
 @click.option("--cache/--no-cache", default=True, help="Remove local cache")
-@click.option("--all", "remove_all", is_flag=True, default=False, help="Remove everything including repo clone")
+@click.option(
+    "--all",
+    "remove_all",
+    is_flag=True,
+    default=False,
+    help="Remove everything including repo clone",
+)
 @pass_context
 def clean(ctx, containers, cache, remove_all):
     """Remove local cache and stale containers."""
@@ -28,9 +36,7 @@ def clean(ctx, containers, cache, remove_all):
         click.echo(f"  Cleared cache: {result.get('cache_size_mb', 0):.1f}MB freed")
 
 
-def _clean_impl(
-    ctx, containers: bool = True, cache: bool = True, remove_all: bool = False
-) -> dict:
+def _clean_impl(ctx, containers: bool = True, cache: bool = True, remove_all: bool = False) -> dict:
     """Implementation of clean logic."""
     import shutil
 

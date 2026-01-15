@@ -8,6 +8,8 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from lsqm.services.parity_checker import analyze_error_parity, extract_error_details
+
 
 def generate_html_report(
     run_data: dict,
@@ -76,6 +78,8 @@ def generate_html_report(
         pytest_passed = pytest_results.get("passed", 0)
         pytest_failed = pytest_results.get("failed", 0)
         pytest_output = pytest_results.get("output", "")
+        individual_tests = pytest_results.get("individual_tests", [])
+        operation_results = pytest_results.get("operation_results", [])
 
         # Accumulate test totals
         total_tests += pytest_passed + pytest_failed
@@ -108,8 +112,12 @@ def generate_html_report(
         terraform_output = _strip_ansi(terraform_apply.get("logs", ""))
 
         # Build artifact URLs for this architecture
-        arch_artifact_url = f"{artifact_repo_url}/tree/main/architectures/{arch_hash}" if artifact_repo_url else ""
-        app_artifact_url = f"{artifact_repo_url}/tree/main/apps/{arch_hash}" if artifact_repo_url else ""
+        arch_artifact_url = (
+            f"{artifact_repo_url}/tree/main/architectures/{arch_hash}" if artifact_repo_url else ""
+        )
+        app_artifact_url = (
+            f"{artifact_repo_url}/tree/main/apps/{arch_hash}" if artifact_repo_url else ""
+        )
 
         # Analyze failures for LocalStack quality insights
         container_logs = result.get("container_logs", "")
@@ -120,28 +128,35 @@ def generate_html_report(
             error_message=result.get("error_message"),
         )
 
-        result_rows.append({
-            "hash": arch_hash,
-            "name": arch_data.get("name", arch_hash[:8]),
-            "services": services,
-            "status": status,
-            "duration": result.get("duration_seconds", 0),
-            "pytest_passed": pytest_passed,
-            "pytest_failed": pytest_failed,
-            "pytest_output": pytest_output,
-            "terraform_output": terraform_output,
-            "logs": container_logs,  # Full logs - no truncation
-            "terraform_files": terraform_files,
-            "app_files": app_files,
-            "test_features": test_features,
-            "test_cases": test_cases,
-            "source_url": arch_data.get("source_url", ""),
-            "source_type": arch_data.get("source_type", ""),
-            "original_format": arch_data.get("original_format", "terraform"),
-            "arch_artifact_url": arch_artifact_url,
-            "app_artifact_url": app_artifact_url,
-            "failure_analysis": failure_analysis,
-        })
+        result_rows.append(
+            {
+                "hash": arch_hash,
+                "name": arch_data.get("name", arch_hash[:8]),
+                "services": services,
+                "status": status,
+                "duration": result.get("duration_seconds", 0),
+                "pytest_passed": pytest_passed,
+                "pytest_failed": pytest_failed,
+                "pytest_output": pytest_output,
+                "individual_tests": individual_tests,
+                "operation_results": operation_results,
+                "terraform_output": terraform_output,
+                "logs": container_logs,  # Full logs - no truncation
+                "terraform_files": terraform_files,
+                "app_files": app_files,
+                "test_features": test_features,
+                "test_cases": test_cases,
+                "source_url": arch_data.get("source_url", ""),
+                "source_type": arch_data.get("source_type", ""),
+                "original_format": arch_data.get("original_format", "terraform"),
+                "arch_artifact_url": arch_artifact_url,
+                "app_artifact_url": app_artifact_url,
+                "failure_analysis": failure_analysis,
+                "preprocessing_delta": result.get("preprocessing_delta"),
+                "resource_inventory": result.get("resource_inventory"),
+                "test_quality": result.get("test_quality"),
+            }
+        )
 
     # Calculate test pass rate
     test_pass_rate = (total_tests_passed / total_tests * 100) if total_tests > 0 else 0
@@ -151,12 +166,14 @@ def generate_html_report(
     for svc_name, counts in service_counts.items():
         svc_total = counts["passed"] + counts["failed"]
         svc_pass_rate = (counts["passed"] / svc_total * 100) if svc_total > 0 else 0
-        service_stats.append({
-            "name": svc_name,
-            "passed": counts["passed"],
-            "failed": counts["failed"],
-            "pass_rate": svc_pass_rate,
-        })
+        service_stats.append(
+            {
+                "name": svc_name,
+                "passed": counts["passed"],
+                "failed": counts["failed"],
+                "pass_rate": svc_pass_rate,
+            }
+        )
     service_stats.sort(key=lambda s: s["pass_rate"], reverse=True)
 
     # Sort by status (failures first)
@@ -233,12 +250,14 @@ def _load_service_trends(artifacts_dir: Path) -> list[dict]:
 
     services = []
     for name, trend in data.get("services", {}).items():
-        services.append({
-            "name": name,
-            "pass_rate": trend.get("current_pass_rate", 0) * 100,
-            "trend": trend.get("trend", "stable"),
-            "count": trend.get("architecture_count", 0),
-        })
+        services.append(
+            {
+                "name": name,
+                "pass_rate": trend.get("current_pass_rate", 0) * 100,
+                "trend": trend.get("trend", "stable"),
+                "count": trend.get("architecture_count", 0),
+            }
+        )
 
     # Sort by pass rate
     services.sort(key=lambda s: s["pass_rate"], reverse=True)
@@ -275,12 +294,14 @@ def _load_run_history(artifacts_dir: Path, limit: int = 12) -> list[dict]:
             summary = data.get("summary", {})
             total = summary.get("total", 0)
             passed = summary.get("passed", 0)
-            history.append({
-                "run_id": data.get("run_id", run_dir.name)[:8],
-                "date": data.get("started_at", "")[:10],
-                "pass_rate": (passed / total * 100) if total > 0 else 0,
-                "total": total,
-            })
+            history.append(
+                {
+                    "run_id": data.get("run_id", run_dir.name)[:8],
+                    "date": data.get("started_at", "")[:10],
+                    "pass_rate": (passed / total * 100) if total > 0 else 0,
+                    "total": total,
+                }
+            )
 
     # Reverse to show oldest first (for chart)
     return list(reversed(history))
@@ -360,7 +381,7 @@ def _extract_test_cases(app_files: dict[str, str]) -> list[dict[str, str]]:
     test_cases = []
 
     # Pattern to match test functions
-    func_pattern = re.compile(r'def\s+(test_\w+)\s*\([^)]*\)\s*:', re.MULTILINE)
+    func_pattern = re.compile(r"def\s+(test_\w+)\s*\([^)]*\)\s*:", re.MULTILINE)
     # Pattern to match docstring after function definition
     docstring_pattern = re.compile(r'^\s*"""(.+?)"""', re.DOTALL)
 
@@ -369,7 +390,7 @@ def _extract_test_cases(app_files: dict[str, str]) -> list[dict[str, str]]:
             for match in func_pattern.finditer(content):
                 test_name = match.group(1)
                 # Look for docstring after the function definition
-                rest_of_content = content[match.end():]
+                rest_of_content = content[match.end() :]
                 docstring = ""
                 doc_match = docstring_pattern.match(rest_of_content)
                 if doc_match:
@@ -377,11 +398,13 @@ def _extract_test_cases(app_files: dict[str, str]) -> list[dict[str, str]]:
 
                 # Convert test_name to human readable format
                 readable_name = test_name.replace("test_", "").replace("_", " ").title()
-                test_cases.append({
-                    "name": test_name,
-                    "readable_name": readable_name,
-                    "description": docstring,
-                })
+                test_cases.append(
+                    {
+                        "name": test_name,
+                        "readable_name": readable_name,
+                        "description": docstring,
+                    }
+                )
 
     return test_cases
 
@@ -418,7 +441,8 @@ def analyze_failure(
         "aws_error_code": None,  # e.g., InvalidParameterValueException
         "affected_service": None,
         "affected_resource": None,
-        "is_localstack_issue": True,  # vs test setup issue
+        "is_localstack_issue": False,  # Default: assume config issue until proven LocalStack
+        "localstack_issue_reason": None,  # Why we think it's a LocalStack issue
     }
 
     # === EXTRACT ACTUAL ERROR FROM TERRAFORM OUTPUT ===
@@ -459,25 +483,252 @@ def analyze_failure(
 
         # Pattern 4: Lambda runtime validation errors (Terraform provider issue, not LocalStack)
         if "expected runtime to be one of" in terraform_output:
-            runtime_match = re.search(r'got\s+(\S+)', terraform_output)
+            runtime_match = re.search(r"got\s+(\S+)", terraform_output)
             runtime = runtime_match.group(1) if runtime_match else "unknown"
-            analysis["error_message"] = f"Unsupported Lambda runtime in Terraform provider validation: {runtime}"
+            analysis["error_message"] = (
+                f"Unsupported Lambda runtime in Terraform provider validation: {runtime}"
+            )
             analysis["is_localstack_issue"] = False
             analysis["category"] = "provider_version"
 
-        # Pattern 5: tflocal override issues (tflocal bug, not LocalStack)
-        if "Unsupported argument" in terraform_output and "localstack_providers_override.tf" in terraform_output:
+        # Pattern 5: Provider endpoint configuration issues (not LocalStack)
+        if (
+            "Unsupported argument" in terraform_output
+            and "localstack_providers_override.tf" in terraform_output
+        ):
             arg_match = re.search(r'argument named "(\w+)"', terraform_output)
             arg_name = arg_match.group(1) if arg_match else "unknown"
-            analysis["error_message"] = f"tflocal generated unsupported provider endpoint: {arg_name}"
+            analysis["error_message"] = (
+                f"Unsupported provider endpoint: {arg_name}"
+            )
             analysis["is_localstack_issue"] = False
-            analysis["category"] = "tflocal_bug"
+            analysis["category"] = "provider_config"
 
         # Pattern 6: Context variable issues (module configuration, not LocalStack)
         if "var.context" in terraform_output and "Unsupported attribute" in terraform_output:
-            analysis["error_message"] = "Module requires external context object (null-label pattern)"
+            analysis["error_message"] = (
+                "Module requires external context object (null-label pattern)"
+            )
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
+
+        # Pattern 7: AWS shared config profile issues (not LocalStack)
+        if "failed to get shared config profile" in terraform_output.lower():
+            analysis["error_message"] = (
+                "AWS provider config error: failed to get shared config profile"
+            )
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_config"
+
+        # Pattern 8: Missing source files for archive (not LocalStack)
+        if "could not archive missing directory" in terraform_output.lower():
+            dir_match = re.search(r"could not archive missing directory:\s*(\S+)", terraform_output)
+            missing_dir = dir_match.group(1) if dir_match else "unknown"
+            analysis["error_message"] = f"Missing source directory for archive: {missing_dir}"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "missing_files"
+
+        # Pattern 9: Archive creation errors (usually missing source files)
+        if "archive creation error" in terraform_output.lower() and not analysis.get("error_message"):
+            analysis["error_message"] = "Archive creation error - missing source files"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "missing_files"
+
+        # Pattern 9b: Missing attribute configuration in archive_file (not LocalStack)
+        if "Missing Attribute Configuration" in terraform_output and "archive_file" in terraform_output:
+            analysis["error_message"] = "Archive file missing source configuration"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "missing_files"
+
+        # Pattern 9c: HCL syntax errors (not LocalStack)
+        hcl_syntax_errors = [
+            "Extra characters after interpolation expression",
+            "Invalid expression",
+            "Invalid block definition",
+            "Invalid character",
+        ]
+        for syntax_error in hcl_syntax_errors:
+            if syntax_error in terraform_output:
+                analysis["error_message"] = f"HCL syntax error: {syntax_error}"
+                analysis["is_localstack_issue"] = False
+                analysis["category"] = "syntax_error"
+                break
+
+        # Pattern 10: Terraform module version constraints (not LocalStack)
+        if "unresolvable module version constraint" in terraform_output.lower():
+            module_match = re.search(r'module\s+"([^"]+)"', terraform_output)
+            module_name = module_match.group(1) if module_match else "unknown"
+            analysis["error_message"] = f"Terraform module version constraint error: {module_name}"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "terraform_registry"
+
+        # Pattern 11: Terraform init failures (usually not LocalStack)
+        if "init failed" in terraform_output.lower():
+            if analysis.get("is_localstack_issue") is not False:  # Don't override if already set
+                analysis["is_localstack_issue"] = False
+                analysis["category"] = "terraform_init"
+                if not analysis.get("error_message"):
+                    analysis["error_message"] = "Terraform init failed"
+
+        # Pattern 12: Lambda Docker not available (CI environment issue, not LocalStack)
+        if "docker not available" in terraform_output.lower():
+            analysis["error_message"] = (
+                "Lambda execution requires Docker - not available in CI environment"
+            )
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "ci_environment"
+
+        # Pattern 13: S3 Control service not enabled (genuine LocalStack gap)
+        if "s3control" in terraform_output.lower() and "not enabled" in terraform_output.lower():
+            analysis["error_message"] = (
+                "S3 Control service not enabled in LocalStack"
+            )
+            analysis["is_localstack_issue"] = True
+            analysis["category"] = "service_gap"
+
+        # Pattern 14: LocalStack Pro feature required
+        if "not included in your current license plan" in terraform_output.lower():
+            # Extract service name
+            service_match = re.search(r"service\s+(\w+)\s+is", terraform_output.lower())
+            service_name = service_match.group(1) if service_match else "unknown"
+            analysis["error_message"] = (
+                f"Service '{service_name}' requires LocalStack Pro license"
+            )
+            analysis["is_localstack_issue"] = True
+            analysis["category"] = "pro_feature"
+
+        # Pattern 15: Connection refused / LocalStack not ready (infrastructure issue)
+        if "connection refused" in terraform_output.lower():
+            analysis["error_message"] = "Connection refused - LocalStack may not be ready"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "infrastructure"
+
+        # Pattern 16: Backend configuration errors (not LocalStack)
+        if "backend initialization" in terraform_output.lower() or "backend configuration" in terraform_output.lower():
+            analysis["error_message"] = "Backend configuration error - remote state not available"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 17: Assume role errors (not LocalStack)
+        if "assume role" in terraform_output.lower() and "error" in terraform_output.lower():
+            analysis["error_message"] = "Assume role configuration error"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_config"
+
+        # Pattern 18: Resource dependency errors (typically config issue)
+        if "depends on resource" in terraform_output.lower() and "not exist" in terraform_output.lower():
+            analysis["error_message"] = "Resource dependency error - missing prerequisite"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 19: Provider configuration block errors
+        if "error configuring terraform aws provider" in terraform_output.lower():
+            analysis["error_message"] = "AWS provider configuration error"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_config"
+
+        # Pattern 20: Cycle dependency errors (Terraform config issue)
+        if "cycle:" in terraform_output.lower() or "circular dependency" in terraform_output.lower():
+            analysis["error_message"] = "Circular dependency in Terraform configuration"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 21: Invalid resource type (unsupported resource, not LocalStack)
+        if "unsupported resource type" in terraform_output.lower():
+            analysis["error_message"] = "Unsupported Terraform resource type"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 22: Data source lookup failures for external resources
+        if 'data.aws_' in terraform_output and 'couldn\'t find' in terraform_output.lower():
+            # Check if it's looking for a pre-existing resource
+            if any(x in terraform_output.lower() for x in ["vpc", "subnet", "security_group", "ami"]):
+                analysis["error_message"] = "Data source lookup failed - expects pre-existing AWS resources"
+                analysis["is_localstack_issue"] = False
+                analysis["category"] = "config"
+
+        # Pattern 23: Terraform state lock errors (infrastructure)
+        if "state lock" in terraform_output.lower() or "lock acquisition" in terraform_output.lower():
+            analysis["error_message"] = "Terraform state lock error"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "infrastructure"
+
+        # Pattern 24: Plugin/provider not found errors
+        if "could not retrieve the list of available versions" in terraform_output.lower():
+            analysis["error_message"] = "Terraform provider version retrieval error"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "terraform_init"
+
+        # Pattern 25: Default tags variable reference errors
+        if "default_tags" in terraform_output.lower() and "reference" in terraform_output.lower():
+            analysis["error_message"] = "Default tags configuration references unavailable variable"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_config"
+
+        # Pattern 26: Workspace errors
+        if "workspace" in terraform_output.lower() and "does not exist" in terraform_output.lower():
+            analysis["error_message"] = "Terraform workspace does not exist"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 27: ForEach/count errors from missing data
+        if "invalid for_each argument" in terraform_output.lower() or "invalid count argument" in terraform_output.lower():
+            analysis["error_message"] = "Dynamic resource count depends on unavailable data"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 28: Region-specific availability zone errors
+        if "availability zone" in terraform_output.lower() and "not available" in terraform_output.lower():
+            analysis["error_message"] = "Availability zone not available in region"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 29: Module not found in registry
+        if "module is not available" in terraform_output.lower() or "no available releases match" in terraform_output.lower():
+            analysis["error_message"] = "Terraform module not found in registry"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "terraform_registry"
+
+        # Pattern 30: Invalid HCL syntax
+        if "invalid syntax" in terraform_output.lower() or "unexpected token" in terraform_output.lower():
+            analysis["error_message"] = "Invalid Terraform HCL syntax"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "syntax"
+
+        # Pattern 31: Required provider constraint not met
+        if "required_providers" in terraform_output.lower() and "constraint" in terraform_output.lower():
+            analysis["error_message"] = "Provider version constraint not satisfiable"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_version"
+
+        # Pattern 32: Local module source not found
+        if "source code was not found" in terraform_output.lower():
+            analysis["error_message"] = "Module source path not found"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "missing_files"
+
+        # Pattern 35: Reference to undeclared resource (Terraform config error)
+        if "reference to undeclared resource" in terraform_output.lower():
+            res_match = re.search(r'resource\s+"([^"]+)"\s+"([^"]+)"', terraform_output)
+            if res_match:
+                analysis["error_message"] = f"Reference to undeclared resource: {res_match.group(1)}.{res_match.group(2)}"
+            else:
+                analysis["error_message"] = "Reference to undeclared resource in Terraform config"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 33: VPC/Networking prerequisite issues
+        if any(x in terraform_output.lower() for x in ["vpcid", "subnetid", "security group"]):
+            if "not found" in terraform_output.lower() or "invalid" in terraform_output.lower():
+                analysis["error_message"] = "VPC/Network resource not found - missing prerequisite"
+                analysis["is_localstack_issue"] = False
+                analysis["category"] = "missing_prereq"
+
+        # Pattern 34: Terraform lock file issues
+        if "lock file" in terraform_output.lower() and ("missing" in terraform_output.lower() or "checksum" in terraform_output.lower()):
+            analysis["error_message"] = "Terraform dependency lock file issue"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "terraform_init"
 
     # === DETECT AFFECTED SERVICE ===
     combined = f"{terraform_output}\n{container_logs}".lower()
@@ -523,14 +774,180 @@ def analyze_failure(
             container_logs,
         )
         if ls_exception:
-            analysis["localstack_exception"] = f"{ls_exception.group(1)}: {ls_exception.group(2).strip()}"
+            analysis["localstack_exception"] = (
+                f"{ls_exception.group(1)}: {ls_exception.group(2).strip()}"
+            )
 
-        # Look for "not implemented" messages
-        not_impl = re.search(r"not\s+implemented[^\n]*", container_logs, re.IGNORECASE)
-        if not_impl:
-            analysis["not_implemented"] = not_impl.group(0).strip()
+        # Look for "not implemented" messages (various patterns)
+        not_impl_patterns = [
+            r"not\s+implemented[^\n]*",
+            r"NotImplementedError[^\n]*",
+            r"operation\s+not\s+supported[^\n]*",
+            r"feature\s+not\s+available[^\n]*",
+            r"unsupported\s+operation[^\n]*",
+            r"method\s+not\s+allowed[^\n]*",
+            r"action\s+not\s+supported[^\n]*",
+        ]
+        for pattern in not_impl_patterns:
+            not_impl = re.search(pattern, container_logs, re.IGNORECASE)
+            if not_impl:
+                analysis["not_implemented"] = not_impl.group(0).strip()
+                break
+
+        # Look for moto references (internal implementation details leaking)
+        if "moto" in container_logs.lower() and "error" in container_logs.lower():
+            analysis["moto_leak"] = True
+
+        # Look for service stub indicators
+        if "stub" in container_logs.lower() and "not" in container_logs.lower():
+            stub_match = re.search(r"stub[^\n]*not[^\n]*", container_logs, re.IGNORECASE)
+            if stub_match:
+                analysis["stub_issue"] = stub_match.group(0).strip()
+
+        # Look for validation messages that indicate missing LocalStack features
+        validation_patterns = [
+            (r"invalid\s+parameter[^\n]*", "validation_error"),
+            (r"malformed\s+request[^\n]*", "validation_error"),
+            (r"parameter\s+validation\s+failed[^\n]*", "validation_error"),
+        ]
+        for pattern, _issue_type in validation_patterns:
+            match = re.search(pattern, container_logs, re.IGNORECASE)
+            if match and not analysis.get("error_message"):
+                analysis["localstack_validation"] = match.group(0).strip()
+                break
+
+    # === POSITIVE LOCALSTACK ISSUE IDENTIFICATION ===
+    # Only mark as LocalStack issue if we have positive evidence
+    # This overrides the default False value when we're confident it's a LocalStack issue
+    is_ls_issue, ls_reason = _is_localstack_issue(
+        terraform_output, container_logs, analysis
+    )
+    if is_ls_issue:
+        analysis["is_localstack_issue"] = True
+        analysis["localstack_issue_reason"] = ls_reason
+
+    # === ERROR MESSAGE PARITY ANALYSIS ===
+    # Check if LocalStack error messages match AWS format
+    if analysis.get("aws_error_code") and analysis.get("is_localstack_issue"):
+        error_code = analysis["aws_error_code"]
+        error_msg = analysis.get("error_message", "")
+
+        # Try to extract more detailed error info from combined output
+        combined_output = f"{terraform_output}\n{container_logs}"
+        error_details = extract_error_details(combined_output)
+
+        # Use extracted message if available, otherwise use what we have
+        message_to_check = error_details.get("error_message") or error_msg
+
+        if message_to_check:
+            parity_result = analyze_error_parity(
+                error_code=error_code,
+                localstack_message=message_to_check,
+            )
+            analysis["parity_result"] = parity_result.to_dict()
+            analysis["has_error_parity"] = parity_result.has_parity
 
     return analysis
+
+
+# Patterns for positive identification of LocalStack issues
+# These indicate the error definitely came from LocalStack, not config/setup
+LOCALSTACK_POSITIVE_PATTERNS = [
+    # Error came from LocalStack API endpoint
+    (r"localhost:4566.*error|error.*localhost:4566", "Error from LocalStack endpoint"),
+    (r"localhost:\d{4,5}.*error|error.*localhost:\d{4,5}", "Error from LocalStack port"),
+    # Note: We removed the generic localstack\.cloud pattern because it matches
+    # documentation URLs like docs.localstack.cloud which appear in warnings
+    # Known LocalStack error messages
+    (r"not implemented in localstack", "Feature not implemented in LocalStack"),
+    (r"localstack pro required", "Requires LocalStack Pro"),
+    (r"service .* not enabled", "Service not enabled in LocalStack"),
+    (r"not included in your current license", "Requires LocalStack Pro license"),
+    # Moto/LocalStack internal errors
+    (r"moto.*exception", "Moto implementation error"),
+    (r"localstack.*exception", "LocalStack internal exception"),
+    (r"localstack\.services\.", "LocalStack service error"),
+    # AWS API errors that reached LocalStack (not config errors)
+    (r"botocore\.exceptions\.ClientError", "AWS client error from LocalStack"),
+    # Resource creation/operation failures in LocalStack
+    (r"error creating .* in localstack", "Resource creation failed in LocalStack"),
+    (r"operation .* failed.*4566", "Operation failed on LocalStack"),
+]
+
+
+def _is_localstack_issue(
+    terraform_output: str,
+    container_logs: str,
+    analysis: dict,
+) -> tuple[bool, str]:
+    """Determine if error is from LocalStack vs config/setup.
+
+    Uses positive identification - only returns True if we have strong evidence
+    the error came from LocalStack itself.
+
+    Args:
+        terraform_output: Terraform apply output
+        container_logs: LocalStack container logs
+        analysis: Current analysis dict (may contain hints)
+
+    Returns:
+        Tuple of (is_localstack_issue, reason)
+    """
+    combined = f"{terraform_output}\n{container_logs}".lower()
+
+    # Check if already marked as not LocalStack (config issue patterns matched)
+    # If a specific config pattern matched, trust that determination
+    if analysis.get("category") in (
+        "config", "provider_config", "provider_version", "terraform_init",
+        "terraform_registry", "missing_files", "syntax", "ci_environment",
+        "infrastructure", "missing_prereq",
+    ):
+        return False, ""
+
+    # Check positive patterns
+    for pattern, reason in LOCALSTACK_POSITIVE_PATTERNS:
+        if re.search(pattern, combined, re.IGNORECASE):
+            return True, reason
+
+    # Check for LocalStack-specific indicators in analysis
+    if analysis.get("not_implemented"):
+        return True, "Feature not implemented"
+
+    if analysis.get("localstack_exception"):
+        return True, "LocalStack internal exception"
+
+    if analysis.get("moto_leak"):
+        return True, "Moto implementation leak"
+
+    if analysis.get("stub_issue"):
+        return True, "Service stub limitation"
+
+    # Check for AWS API errors that clearly reached LocalStack
+    # These are AWS exception types that indicate the request reached the service
+    aws_service_exceptions = [
+        "ResourceNotFoundException",
+        "ResourceInUseException",
+        "ValidationException",
+        "InvalidParameterValueException",
+        "ServiceException",
+        "InternalServiceException",
+        "AccessDeniedException",
+        "ResourceAlreadyExistsException",
+    ]
+
+    error_code = analysis.get("aws_error_code", "")
+    if error_code in aws_service_exceptions:
+        # Check if it's clearly from LocalStack (contains localhost or localstack)
+        if "localhost" in combined or "localstack" in combined:
+            return True, f"AWS API error ({error_code}) from LocalStack"
+
+    # If we have a timeout on a resource operation, it's likely LocalStack
+    if analysis.get("category") == "timeout":
+        if "creating" in combined or "waiting" in combined:
+            return True, "Resource operation timeout in LocalStack"
+
+    # Default: not enough evidence to blame LocalStack
+    return False, ""
 
 
 def _get_inline_template() -> str:
