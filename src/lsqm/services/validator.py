@@ -707,15 +707,18 @@ def _generate_missing_tfvars(work_dir: Path) -> dict[str, str]:
     for tf_file in work_dir.glob("*.tf"):
         content = tf_file.read_text()
 
-        # Parse variable blocks: variable "name" { ... }
+        # Parse variable blocks - handles both quoted and unquoted names:
+        # - variable "name" { ... }
+        # - variable name { ... }
         # We need to find variables without default values
         var_blocks = re.findall(
-            r'variable\s+"([^"]+)"\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}',
+            r'variable\s+(?:"([^"]+)"|(\w+))\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}',
             content,
             re.DOTALL,
         )
 
-        for var_name, var_body in var_blocks:
+        for quoted_name, unquoted_name, var_body in var_blocks:
+            var_name = quoted_name or unquoted_name
             # Check if variable has a default
             has_default = re.search(r'\bdefault\s*=', var_body)
             if not has_default:
