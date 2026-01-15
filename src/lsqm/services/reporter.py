@@ -573,6 +573,92 @@ def analyze_failure(
             analysis["is_localstack_issue"] = True
             analysis["category"] = "pro_feature"
 
+        # Pattern 15: Connection refused / LocalStack not ready (infrastructure issue)
+        if "connection refused" in terraform_output.lower():
+            analysis["error_message"] = "Connection refused - LocalStack may not be ready"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "infrastructure"
+
+        # Pattern 16: Backend configuration errors (not LocalStack)
+        if "backend initialization" in terraform_output.lower() or "backend configuration" in terraform_output.lower():
+            analysis["error_message"] = "Backend configuration error - remote state not available"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 17: Assume role errors (not LocalStack)
+        if "assume role" in terraform_output.lower() and "error" in terraform_output.lower():
+            analysis["error_message"] = "Assume role configuration error"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_config"
+
+        # Pattern 18: Resource dependency errors (typically config issue)
+        if "depends on resource" in terraform_output.lower() and "not exist" in terraform_output.lower():
+            analysis["error_message"] = "Resource dependency error - missing prerequisite"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 19: Provider configuration block errors
+        if "error configuring terraform aws provider" in terraform_output.lower():
+            analysis["error_message"] = "AWS provider configuration error"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_config"
+
+        # Pattern 20: Cycle dependency errors (Terraform config issue)
+        if "cycle:" in terraform_output.lower() or "circular dependency" in terraform_output.lower():
+            analysis["error_message"] = "Circular dependency in Terraform configuration"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 21: Invalid resource type (unsupported resource, not LocalStack)
+        if "unsupported resource type" in terraform_output.lower():
+            analysis["error_message"] = "Unsupported Terraform resource type"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 22: Data source lookup failures for external resources
+        if 'data.aws_' in terraform_output and 'couldn\'t find' in terraform_output.lower():
+            # Check if it's looking for a pre-existing resource
+            if any(x in terraform_output.lower() for x in ["vpc", "subnet", "security_group", "ami"]):
+                analysis["error_message"] = "Data source lookup failed - expects pre-existing AWS resources"
+                analysis["is_localstack_issue"] = False
+                analysis["category"] = "config"
+
+        # Pattern 23: Terraform state lock errors (infrastructure)
+        if "state lock" in terraform_output.lower() or "lock acquisition" in terraform_output.lower():
+            analysis["error_message"] = "Terraform state lock error"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "infrastructure"
+
+        # Pattern 24: Plugin/provider not found errors
+        if "could not retrieve the list of available versions" in terraform_output.lower():
+            analysis["error_message"] = "Terraform provider version retrieval error"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "terraform_init"
+
+        # Pattern 25: Default tags variable reference errors
+        if "default_tags" in terraform_output.lower() and "reference" in terraform_output.lower():
+            analysis["error_message"] = "Default tags configuration references unavailable variable"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_config"
+
+        # Pattern 26: Workspace errors
+        if "workspace" in terraform_output.lower() and "does not exist" in terraform_output.lower():
+            analysis["error_message"] = "Terraform workspace does not exist"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 27: ForEach/count errors from missing data
+        if "invalid for_each argument" in terraform_output.lower() or "invalid count argument" in terraform_output.lower():
+            analysis["error_message"] = "Dynamic resource count depends on unavailable data"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
+        # Pattern 28: Region-specific availability zone errors
+        if "availability zone" in terraform_output.lower() and "not available" in terraform_output.lower():
+            analysis["error_message"] = "Availability zone not available in region"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
     # === DETECT AFFECTED SERVICE ===
     combined = f"{terraform_output}\n{container_logs}".lower()
     service_patterns = [
@@ -621,10 +707,43 @@ def analyze_failure(
                 f"{ls_exception.group(1)}: {ls_exception.group(2).strip()}"
             )
 
-        # Look for "not implemented" messages
-        not_impl = re.search(r"not\s+implemented[^\n]*", container_logs, re.IGNORECASE)
-        if not_impl:
-            analysis["not_implemented"] = not_impl.group(0).strip()
+        # Look for "not implemented" messages (various patterns)
+        not_impl_patterns = [
+            r"not\s+implemented[^\n]*",
+            r"NotImplementedError[^\n]*",
+            r"operation\s+not\s+supported[^\n]*",
+            r"feature\s+not\s+available[^\n]*",
+            r"unsupported\s+operation[^\n]*",
+            r"method\s+not\s+allowed[^\n]*",
+            r"action\s+not\s+supported[^\n]*",
+        ]
+        for pattern in not_impl_patterns:
+            not_impl = re.search(pattern, container_logs, re.IGNORECASE)
+            if not_impl:
+                analysis["not_implemented"] = not_impl.group(0).strip()
+                break
+
+        # Look for moto references (internal implementation details leaking)
+        if "moto" in container_logs.lower() and "error" in container_logs.lower():
+            analysis["moto_leak"] = True
+
+        # Look for service stub indicators
+        if "stub" in container_logs.lower() and "not" in container_logs.lower():
+            stub_match = re.search(r"stub[^\n]*not[^\n]*", container_logs, re.IGNORECASE)
+            if stub_match:
+                analysis["stub_issue"] = stub_match.group(0).strip()
+
+        # Look for validation messages that indicate missing LocalStack features
+        validation_patterns = [
+            (r"invalid\s+parameter[^\n]*", "validation_error"),
+            (r"malformed\s+request[^\n]*", "validation_error"),
+            (r"parameter\s+validation\s+failed[^\n]*", "validation_error"),
+        ]
+        for pattern, _issue_type in validation_patterns:
+            match = re.search(pattern, container_logs, re.IGNORECASE)
+            if match and not analysis.get("error_message"):
+                analysis["localstack_validation"] = match.group(0).strip()
+                break
 
     # === ERROR MESSAGE PARITY ANALYSIS ===
     # Check if LocalStack error messages match AWS format

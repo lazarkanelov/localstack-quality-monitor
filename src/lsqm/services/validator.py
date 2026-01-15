@@ -846,6 +846,85 @@ def _relax_module_version_constraints(work_dir: Path) -> None:
             tf_file.write_text(content)
 
 
+def _remove_backend_configuration(work_dir: Path) -> None:
+    """Remove backend configuration blocks from terraform blocks.
+
+    Remote backends (S3, GCS, Azure, etc.) require external infrastructure
+    that won't exist in our test environment. By removing the backend config,
+    Terraform falls back to local state, which is what we need for testing.
+    """
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+        original = content
+
+        # Remove backend blocks inside terraform blocks
+        # Pattern matches: backend "s3" { ... } or backend "remote" { ... }
+        # We need to handle nested braces within the backend block
+        content = re.sub(
+            r'\s*backend\s+"[^"]+"\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',
+            "",
+            content,
+            flags=re.DOTALL,
+        )
+
+        if content != original:
+            tf_file.write_text(content)
+
+
+def _remove_assume_role_configuration(work_dir: Path) -> None:
+    """Remove assume_role blocks from provider configurations.
+
+    Assume role configurations try to assume an IAM role in AWS, which
+    will fail in our LocalStack test environment. By removing these blocks,
+    the provider uses the direct credentials we provide.
+    """
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+        original = content
+
+        # Remove assume_role blocks from provider blocks
+        # Pattern matches: assume_role { ... }
+        content = re.sub(
+            r'\s*assume_role\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',
+            "",
+            content,
+            flags=re.DOTALL,
+        )
+
+        # Also remove assume_role_with_web_identity blocks
+        content = re.sub(
+            r'\s*assume_role_with_web_identity\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',
+            "",
+            content,
+            flags=re.DOTALL,
+        )
+
+        if content != original:
+            tf_file.write_text(content)
+
+
+def _remove_provider_default_tags(work_dir: Path) -> None:
+    """Remove default_tags blocks from provider configurations.
+
+    Some default_tags configurations reference variables or data sources
+    that may not be available in our test environment, causing errors.
+    """
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+        original = content
+
+        # Remove default_tags blocks from provider blocks
+        content = re.sub(
+            r'\s*default_tags\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',
+            "",
+            content,
+            flags=re.DOTALL,
+        )
+
+        if content != original:
+            tf_file.write_text(content)
+
+
 async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> TerraformApplyResult:
     """Run terraform init and apply against LocalStack.
 
@@ -868,6 +947,9 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
     # Pre-process Terraform files to fix common issues
     _normalize_provider_versions(work_dir)
     _remove_aws_profile_references(work_dir)
+    _remove_backend_configuration(work_dir)
+    _remove_assume_role_configuration(work_dir)
+    _remove_provider_default_tags(work_dir)
     _create_stub_lambda_sources(work_dir)
     _generate_missing_tfvars(work_dir)
     _remove_pro_only_resources(work_dir)
