@@ -546,6 +546,22 @@ def analyze_failure(
                 if not analysis.get("error_message"):
                     analysis["error_message"] = "Terraform init failed"
 
+        # Pattern 12: Lambda Docker not available (CI environment issue, not LocalStack)
+        if "docker not available" in terraform_output.lower():
+            analysis["error_message"] = (
+                "Lambda execution requires Docker - not available in CI environment"
+            )
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "ci_environment"
+
+        # Pattern 13: S3 Control service not enabled (genuine LocalStack gap)
+        if "s3control" in terraform_output.lower() and "not enabled" in terraform_output.lower():
+            analysis["error_message"] = (
+                "S3 Control service not enabled in LocalStack"
+            )
+            analysis["is_localstack_issue"] = True
+            analysis["category"] = "service_gap"
+
     # === DETECT AFFECTED SERVICE ===
     combined = f"{terraform_output}\n{container_logs}".lower()
     service_patterns = [

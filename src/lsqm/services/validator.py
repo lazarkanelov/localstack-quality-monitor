@@ -244,6 +244,11 @@ async def _validate_single(
             ports={"4566/tcp": port},
             environment={
                 "SERVICES": ",".join(sorted(arch_services)),
+                "DEBUG": "0",  # Reduce log verbosity
+                "LAMBDA_EXECUTOR": "docker",  # Use Docker for Lambda execution
+            },
+            volumes={
+                "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
             },
             remove=not keep_containers,
         )
