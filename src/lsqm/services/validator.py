@@ -627,7 +627,6 @@ def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
 
     for tf_file in work_dir.glob("*.tf"):
         content = tf_file.read_text()
-        original = content
 
         # Extract Lambda function names
         lambda_pattern = r'resource\s+"aws_lambda_function"\s+"([^"]+)"'
@@ -690,32 +689,9 @@ def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
                     tfvars_content += f'\n{var_name} = "lambda_src"\n'
                     tfvars_file.write_text(tfvars_content)
 
-        # Check for archive_file blocks without source_file or source_dir
-        # These need to have a source attribute added
-        archive_pattern = r'data\s+"archive_file"\s+"([^"]+)"\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}'
-        for match in re.finditer(archive_pattern, content, re.DOTALL):
-            archive_name = match.group(1)
-            archive_body = match.group(2)
-
-            # Check if this archive has any source configuration
-            has_source = any(kw in archive_body for kw in ['source_file', 'source_dir', 'source '])
-            if not has_source:
-                # Create a stub source file for this archive
-                stub_path = work_dir / f"lambda_stubs/{archive_name}.js"
-                stub_path.parent.mkdir(parents=True, exist_ok=True)
-                if not stub_path.exists():
-                    stub_path.write_text('exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n')
-                    stub_info.files.append(str(stub_path.relative_to(work_dir)))
-                    stub_info.stub_types[str(stub_path.relative_to(work_dir))] = "js"
-
-                # Add source_file to the archive block
-                old_block = match.group(0)
-                new_body = archive_body.rstrip() + f'\n  source_file = "${{path.module}}/lambda_stubs/{archive_name}.js"'
-                new_block = f'data "archive_file" "{archive_name}" {{{new_body}\n}}'
-                content = content.replace(old_block, new_block)
-
-        if content != original:
-            tf_file.write_text(content)
+        # Note: We don't try to modify archive_file blocks that are missing source
+        # configuration, as this is risky and can cause HCL syntax errors.
+        # Such cases will be classified as config issues in the reporter.
 
         # Create stub files
         for src_file in source_files:
@@ -1292,9 +1268,11 @@ def _remove_null_label_dependencies(work_dir: Path) -> None:
             vars_content += '''
 
 # Auto-generated context variable for null-label compatibility
+# Includes both standard null-label attributes and common extended attributes
 variable "context" {
   type = any
   default = {
+    # Standard null-label attributes
     enabled             = true
     namespace           = "lsqm"
     environment         = "test"
@@ -1309,6 +1287,13 @@ variable "context" {
     id_length_limit     = null
     label_key_case      = null
     label_value_case    = null
+    # Extended context attributes (used by some modules)
+    aws_account_id      = "000000000000"
+    aws_region          = "us-east-1"
+    organizational_unit = "test"
+    tenant              = null
+    descriptor_formats  = {}
+    labels_as_tags      = ["unset"]
   }
   description = "Single object for setting entire context at once"
 }

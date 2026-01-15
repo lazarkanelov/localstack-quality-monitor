@@ -534,6 +534,26 @@ def analyze_failure(
             analysis["is_localstack_issue"] = False
             analysis["category"] = "missing_files"
 
+        # Pattern 9b: Missing attribute configuration in archive_file (not LocalStack)
+        if "Missing Attribute Configuration" in terraform_output and "archive_file" in terraform_output:
+            analysis["error_message"] = "Archive file missing source configuration"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "missing_files"
+
+        # Pattern 9c: HCL syntax errors (not LocalStack)
+        hcl_syntax_errors = [
+            "Extra characters after interpolation expression",
+            "Invalid expression",
+            "Invalid block definition",
+            "Invalid character",
+        ]
+        for syntax_error in hcl_syntax_errors:
+            if syntax_error in terraform_output:
+                analysis["error_message"] = f"HCL syntax error: {syntax_error}"
+                analysis["is_localstack_issue"] = False
+                analysis["category"] = "syntax_error"
+                break
+
         # Pattern 10: Terraform module version constraints (not LocalStack)
         if "unresolvable module version constraint" in terraform_output.lower():
             module_match = re.search(r'module\s+"([^"]+)"', terraform_output)
