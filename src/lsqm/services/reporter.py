@@ -152,6 +152,9 @@ def generate_html_report(
                 "arch_artifact_url": arch_artifact_url,
                 "app_artifact_url": app_artifact_url,
                 "failure_analysis": failure_analysis,
+                "preprocessing_delta": result.get("preprocessing_delta"),
+                "resource_inventory": result.get("resource_inventory"),
+                "test_quality": result.get("test_quality"),
             }
         )
 
