@@ -128,13 +128,22 @@ Generate these files:
 # - Test resource provisioning (resources exist after terraform apply)
 # - Test the realistic application workflows end-to-end
 # - Include data flow verification
-# - At least 5-8 meaningful test cases covering:
+# - At least 8-12 meaningful test cases covering:
 #   1. Resource existence checks
 #   2. Data upload/creation
 #   3. Processing/transformation
 #   4. Result verification
-#   5. Error handling scenarios
+#   5. Error handling scenarios (NEGATIVE TESTS - see below)
 #   6. Edge cases
+
+# IMPORTANT: Include NEGATIVE TESTS (at least 2-3):
+# - test_invalid_* : Test with invalid inputs (expect errors)
+# - test_nonexistent_* : Test operations on missing resources
+# - test_unauthorized_* : Test permission denied scenarios
+# Example negative tests:
+#   - test_get_nonexistent_object: Verify NoSuchKey error
+#   - test_invalid_bucket_name: Verify InvalidBucketName error
+#   - test_put_oversized_message: Verify size limit enforcement
 ```
 
 ### 4. requirements.txt

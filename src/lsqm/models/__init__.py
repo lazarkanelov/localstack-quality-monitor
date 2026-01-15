@@ -32,6 +32,23 @@ from lsqm.models.validation_result import (
     ValidationResult,
     ValidationStatus,
 )
+from lsqm.models.qa_models import (
+    ConfigCheck,
+    ErrorCluster,
+    MultiVersionMatrix,
+    NegativeTestCase,
+    PerformanceBaseline,
+    QualityGateCheck,
+    QualityGateConfig,
+    QualityGateResult,
+    QualityGateStatus,
+    ResourceConfigVerification,
+    TestStabilityRecord,
+    ValidationCache,
+    VersionTestResult,
+    WorkerStatus,
+    WorkerTask,
+)
 
 __all__ = [
     # Architecture
@@ -71,4 +88,20 @@ __all__ = [
     "TestFunctionAnalysis",
     "TestQualityAnalysis",
     "TestQualityIssue",
+    # QA Models (new)
+    "ConfigCheck",
+    "ErrorCluster",
+    "MultiVersionMatrix",
+    "NegativeTestCase",
+    "PerformanceBaseline",
+    "QualityGateCheck",
+    "QualityGateConfig",
+    "QualityGateResult",
+    "QualityGateStatus",
+    "ResourceConfigVerification",
+    "TestStabilityRecord",
+    "ValidationCache",
+    "VersionTestResult",
+    "WorkerStatus",
+    "WorkerTask",
 ]
