@@ -22,6 +22,14 @@ from lsqm.models import (
     ValidationStatus,
 )
 from lsqm.models.operation_coverage import map_test_to_operations
+from lsqm.models.preprocessing_delta import (
+    PreprocessingDelta,
+    RemovedResource,
+    ServiceReconciliation,
+    StubInfo,
+)
+from lsqm.models.resource_inventory import ResourceInventory, TerraformResource
+from lsqm.services.localstack_services import extract_services_from_terraform
 
 # Track active containers for cleanup
 _active_containers: list = []
@@ -278,8 +286,13 @@ async def _validate_single(
                 started_at=started_at,
             )
 
-        # Run tflocal init and apply
-        tf_result = await _run_terraform(temp_dir, endpoint, timeout)
+        # Extract original services BEFORE preprocessing for tracking
+        original_services = extract_services_from_terraform(temp_dir)
+
+        # Run terraform init and apply with preprocessing tracking
+        tf_result, preprocessing_delta = await _run_terraform(
+            temp_dir, endpoint, timeout, original_services=original_services
+        )
 
         if not tf_result.success:
             return ValidationResult(
@@ -291,7 +304,22 @@ async def _validate_single(
                 duration_seconds=(datetime.utcnow() - started_at).total_seconds(),
                 terraform_apply=tf_result,
                 container_logs=_get_container_logs(container),
+                preprocessing_delta=preprocessing_delta,
             )
+
+        # Build resource inventory after successful apply
+        import os
+
+        env = os.environ.copy()
+        env.update(
+            {
+                "AWS_ACCESS_KEY_ID": "test",
+                "AWS_SECRET_ACCESS_KEY": "test",
+                "AWS_DEFAULT_REGION": "us-east-1",
+            }
+        )
+        expected_resources = _extract_expected_resources(temp_dir)
+        resource_inventory = await _build_resource_inventory(temp_dir, env, expected_resources)
 
         # Run pytest
         pytest_result = await _run_pytest(temp_dir, endpoint, timeout=60)
@@ -304,7 +332,7 @@ async def _validate_single(
         else:
             status = ValidationStatus.FAILED
 
-        # Run tflocal destroy
+        # Run terraform destroy
         await _run_terraform_destroy(temp_dir, endpoint)
 
         return ValidationResult(
@@ -319,6 +347,8 @@ async def _validate_single(
             container_logs=_get_container_logs(container)
             if status != ValidationStatus.PASSED
             else "",
+            preprocessing_delta=preprocessing_delta,
+            resource_inventory=resource_inventory,
         )
 
     except TimeoutError:
@@ -580,15 +610,28 @@ def _remove_aws_profile_references(work_dir: Path) -> None:
             tf_file.write_text(content)
 
 
-def _create_stub_lambda_sources(work_dir: Path) -> None:
+def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
     """Create stub source files for Lambda functions that reference missing files.
 
     Many Terraform architectures reference source files like ./src/app.js or
     ./src/handler.py that don't exist in our copy. Instead of failing, we create
     minimal stub files that allow Terraform to complete the archive_file creation.
+
+    Returns:
+        StubInfo with details about created stub files.
     """
+    stub_info = StubInfo()
+
+    # Also try to extract Lambda function names from the terraform
+    lambda_names: set[str] = set()
+
     for tf_file in work_dir.glob("*.tf"):
         content = tf_file.read_text()
+
+        # Extract Lambda function names
+        lambda_pattern = r'resource\s+"aws_lambda_function"\s+"([^"]+)"'
+        for match in re.finditer(lambda_pattern, content):
+            lambda_names.add(match.group(1))
 
         # Find source_file references in archive_file data sources
         # e.g., source_file = "${path.module}/src/app.js"
@@ -609,14 +652,22 @@ def _create_stub_lambda_sources(work_dir: Path) -> None:
                 file_path.parent.mkdir(parents=True, exist_ok=True)
                 # Create appropriate stub based on file extension
                 ext = file_path.suffix.lower()
+                stub_type = "unknown"
                 if ext == ".js":
                     file_path.write_text('exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n')
+                    stub_type = "js"
                 elif ext == ".py":
                     file_path.write_text('def handler(event, context):\n    return {"statusCode": 200, "body": "stub"}\n')
+                    stub_type = "py"
                 elif ext == ".ts":
                     file_path.write_text('export const handler = async (event: any) => { return { statusCode: 200, body: "stub" }; };\n')
+                    stub_type = "ts"
                 else:
                     file_path.write_text("# stub file\n")
+
+                rel_path = str(file_path.relative_to(work_dir))
+                stub_info.files.append(rel_path)
+                stub_info.stub_types[rel_path] = stub_type
 
         # Create stub directories with index files
         for src_dir in source_dirs:
@@ -624,18 +675,33 @@ def _create_stub_lambda_sources(work_dir: Path) -> None:
             if not dir_path.exists():
                 dir_path.mkdir(parents=True, exist_ok=True)
                 # Create a stub index.js file (common for Lambda)
-                (dir_path / "index.js").write_text(
+                index_file = dir_path / "index.js"
+                index_file.write_text(
                     'exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n'
                 )
+                stub_info.directories.append(str(dir_path.relative_to(work_dir)))
+                rel_path = str(index_file.relative_to(work_dir))
+                stub_info.files.append(rel_path)
+                stub_info.stub_types[rel_path] = "js"
+
+    # If we created stubs and there are Lambda functions, they're likely affected
+    if stub_info.has_stubs and lambda_names:
+        stub_info.lambdas = sorted(lambda_names)
+
+    return stub_info
 
 
-def _generate_missing_tfvars(work_dir: Path) -> None:
+def _generate_missing_tfvars(work_dir: Path) -> dict[str, str]:
     """Generate terraform.tfvars for required variables without defaults.
 
     Many Terraform modules require input variables (like 'name', 'environment')
     that have no default values. Instead of failing, we detect these and create
     a tfvars file with sensible stub values.
+
+    Returns:
+        Dictionary of {var_name: value} for variables that were generated.
     """
+    generated_vars: dict[str, str] = {}
     required_vars: dict[str, dict] = {}
 
     for tf_file in work_dir.glob("*.tf"):
@@ -659,7 +725,7 @@ def _generate_missing_tfvars(work_dir: Path) -> None:
                 required_vars[var_name] = {"type": var_type}
 
     if not required_vars:
-        return
+        return generated_vars
 
     # Check if tfvars already exists
     tfvars_file = work_dir / "terraform.tfvars"
@@ -708,6 +774,7 @@ def _generate_missing_tfvars(work_dir: Path) -> None:
                 value = f'"lsqm-{var_name}"'
 
         new_vars.append(f'{var_name} = {value}')
+        generated_vars[var_name] = value
 
     if new_vars:
         # Append to existing or create new tfvars
@@ -718,6 +785,8 @@ def _generate_missing_tfvars(work_dir: Path) -> None:
             else:
                 f.write("# Auto-generated stub values for required variables\n")
             f.write("\n".join(new_vars) + "\n")
+
+    return generated_vars
 
 
 # Services not available in LocalStack Community Edition
@@ -745,16 +814,17 @@ LOCALSTACK_PRO_ONLY_SERVICES = {
 }
 
 
-def _remove_pro_only_resources(work_dir: Path) -> bool:
+def _remove_pro_only_resources(work_dir: Path) -> list[RemovedResource]:
     """Remove resources that require LocalStack Pro.
 
     Some Terraform files reference services only available in LocalStack Pro.
     For testing LocalStack Community Edition, we remove these resources to allow
     the rest of the architecture to be tested.
 
-    Returns True if any resources were removed.
+    Returns:
+        List of RemovedResource tracking what was removed and why.
     """
-    removed_any = False
+    removed_resources: list[RemovedResource] = []
 
     # Resource type prefixes that indicate Pro-only services
     pro_resource_patterns = [
@@ -779,19 +849,44 @@ def _remove_pro_only_resources(work_dir: Path) -> bool:
     for tf_file in work_dir.glob("*.tf"):
         content = tf_file.read_text()
         original = content
+        rel_path = str(tf_file.relative_to(work_dir))
 
         for pattern in pro_resource_patterns:
+            # Find and track resource blocks before removing
+            resource_pattern = rf'resource\s+"({pattern}[^"]*)"\s+"([^"]+)"\s*\{{[^{{}}]*(?:\{{[^{{}}]*\}}[^{{}}]*)*\}}'
+            for match in re.finditer(resource_pattern, content, re.DOTALL):
+                removed_resources.append(
+                    RemovedResource(
+                        resource_type=match.group(1),
+                        resource_name=match.group(2),
+                        reason="pro_only",
+                        file_path=rel_path,
+                    )
+                )
+
             # Remove resource blocks for Pro-only services
-            # Match: resource "aws_bedrock_xxx" "name" { ... }
             content = re.sub(
-                rf'resource\s+"{pattern}[^"]*"\s+"[^"]+"\s*\{{[^{{}}]*(?:\{{[^{{}}]*\}}[^{{}}]*)*\}}',
+                resource_pattern,
                 "# Resource removed - requires LocalStack Pro",
                 content,
                 flags=re.DOTALL,
             )
+
+            # Find and track data blocks before removing
+            data_pattern = rf'data\s+"({pattern}[^"]*)"\s+"([^"]+)"\s*\{{[^{{}}]*(?:\{{[^{{}}]*\}}[^{{}}]*)*\}}'
+            for match in re.finditer(data_pattern, content, re.DOTALL):
+                removed_resources.append(
+                    RemovedResource(
+                        resource_type=match.group(1),
+                        resource_name=match.group(2),
+                        reason="pro_only",
+                        file_path=rel_path,
+                    )
+                )
+
             # Remove data blocks for Pro-only services
             content = re.sub(
-                rf'data\s+"{pattern}[^"]*"\s+"[^"]+"\s*\{{[^{{}}]*(?:\{{[^{{}}]*\}}[^{{}}]*)*\}}',
+                data_pattern,
                 "# Data source removed - requires LocalStack Pro",
                 content,
                 flags=re.DOTALL,
@@ -799,9 +894,8 @@ def _remove_pro_only_resources(work_dir: Path) -> bool:
 
         if content != original:
             tf_file.write_text(content)
-            removed_any = True
 
-    return removed_any
+    return removed_resources
 
 
 def _relax_module_version_constraints(work_dir: Path) -> None:
@@ -925,12 +1019,253 @@ def _remove_provider_default_tags(work_dir: Path) -> None:
             tf_file.write_text(content)
 
 
-async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> TerraformApplyResult:
+def _preprocess_terraform(work_dir: Path, original_services: set[str]) -> PreprocessingDelta:
+    """Run all preprocessing steps and track changes.
+
+    Args:
+        work_dir: Terraform working directory
+        original_services: Services detected before preprocessing
+
+    Returns:
+        PreprocessingDelta with all changes tracked.
+    """
+    # Track modified files by taking a snapshot of file contents before/after
+    file_hashes_before = {}
+    for tf_file in work_dir.glob("*.tf"):
+        file_hashes_before[tf_file.name] = tf_file.read_text()
+
+    # Run preprocessing steps that track their changes
+    stub_info = _create_stub_lambda_sources(work_dir)
+    generated_tfvars = _generate_missing_tfvars(work_dir)
+    removed_resources = _remove_pro_only_resources(work_dir)
+
+    # Run preprocessing steps that don't track (but modify files)
+    _normalize_provider_versions(work_dir)
+    _remove_aws_profile_references(work_dir)
+    _remove_backend_configuration(work_dir)
+    _remove_assume_role_configuration(work_dir)
+    _remove_provider_default_tags(work_dir)
+    _relax_module_version_constraints(work_dir)
+
+    # Detect modified files
+    modified_files = []
+    for tf_file in work_dir.glob("*.tf"):
+        if tf_file.name in file_hashes_before:
+            if file_hashes_before[tf_file.name] != tf_file.read_text():
+                modified_files.append(tf_file.name)
+        else:
+            # New file created
+            modified_files.append(tf_file.name)
+
+    # Re-extract services from modified Terraform files
+    final_services = extract_services_from_terraform(work_dir)
+
+    # Build service reconciliation
+    removed_services = original_services - final_services
+    added_services = final_services - original_services
+
+    warnings = []
+    if removed_services:
+        removed_pct = len(removed_services) / len(original_services) * 100 if original_services else 0
+        if removed_pct > 30:
+            warnings.append(
+                f"Significant service reduction: {len(removed_services)} services "
+                f"({removed_pct:.0f}%) were removed during preprocessing"
+            )
+
+    service_reconciliation = ServiceReconciliation(
+        original_services=original_services,
+        final_services=final_services,
+        removed_services=removed_services,
+        added_services=added_services,
+        warnings=warnings,
+    )
+
+    return PreprocessingDelta(
+        removed_resources=removed_resources,
+        stub_info=stub_info,
+        service_reconciliation=service_reconciliation,
+        modified_files=modified_files,
+        generated_tfvars=generated_tfvars,
+        removed_backends=[],  # Not tracked separately currently
+        removed_profiles=[],  # Not tracked separately currently
+        provider_version_changes=[],  # Not tracked separately currently
+    )
+
+
+async def _get_terraform_state(work_dir: Path, env: dict) -> list[dict]:
+    """Get resources from terraform state.
+
+    Args:
+        work_dir: Terraform working directory
+        env: Environment variables for terraform
+
+    Returns:
+        List of resource dicts with type, name, and attributes.
+    """
+    resources = []
+
+    try:
+        # Get list of all resources
+        proc = await asyncio.create_subprocess_exec(
+            "terraform",
+            "state",
+            "list",
+            cwd=work_dir,
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+
+        if proc.returncode != 0:
+            return resources
+
+        resource_addresses = stdout.decode().strip().split("\n")
+
+        # Get details for each resource
+        for address in resource_addresses:
+            if not address or address.startswith("data."):
+                continue
+
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    "terraform",
+                    "state",
+                    "show",
+                    "-json",
+                    address,
+                    cwd=work_dir,
+                    env=env,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+
+                if proc.returncode == 0:
+                    resource_data = json.loads(stdout.decode())
+                    resources.append(resource_data)
+            except Exception:
+                continue
+
+    except Exception:
+        pass
+
+    return resources
+
+
+async def _build_resource_inventory(
+    work_dir: Path, env: dict, expected_resources: list[str]
+) -> ResourceInventory:
+    """Build resource inventory by comparing terraform state to expected resources.
+
+    Args:
+        work_dir: Terraform working directory
+        env: Environment variables for terraform
+        expected_resources: List of expected resource addresses
+
+    Returns:
+        ResourceInventory with verification status.
+    """
+    inventory = ResourceInventory(expected_resources=expected_resources)
+
+    try:
+        state_resources = await _get_terraform_state(work_dir, env)
+
+        for res_data in state_resources:
+            if not isinstance(res_data, dict):
+                continue
+
+            # Extract resource info from terraform state show -json output
+            res_type = res_data.get("type", "")
+            res_name = res_data.get("name", "")
+            res_values = res_data.get("values", {})
+
+            # Try to get resource ID from common attribute names
+            res_id = (
+                res_values.get("id")
+                or res_values.get("arn")
+                or res_values.get("name")
+                or f"{res_type}.{res_name}"
+            )
+
+            # Extract key attributes for verification
+            attributes = {}
+            for key in ["id", "arn", "name", "bucket", "function_name", "table_name"]:
+                if key in res_values:
+                    attributes[key] = res_values[key]
+
+            inventory.resources.append(
+                TerraformResource(
+                    resource_type=res_type,
+                    resource_name=res_name,
+                    resource_id=str(res_id),
+                    attributes=attributes,
+                )
+            )
+
+        # Calculate missing and extra resources
+        actual_addresses = {r.address for r in inventory.resources}
+        expected_set = set(expected_resources)
+
+        inventory.missing_resources = sorted(expected_set - actual_addresses)
+        inventory.extra_resources = sorted(actual_addresses - expected_set)
+
+        # Determine verification status
+        if not inventory.missing_resources:
+            inventory.verification_status = "complete"
+        elif len(inventory.missing_resources) < len(expected_resources):
+            inventory.verification_status = "incomplete"
+        else:
+            inventory.verification_status = "failed"
+
+    except Exception:
+        inventory.verification_status = "failed"
+
+    return inventory
+
+
+def _extract_expected_resources(work_dir: Path) -> list[str]:
+    """Extract expected resource addresses from Terraform files.
+
+    Args:
+        work_dir: Terraform working directory
+
+    Returns:
+        List of expected resource addresses (e.g., "aws_s3_bucket.my_bucket")
+    """
+    expected = []
+
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+
+        # Find resource blocks: resource "aws_s3_bucket" "my_bucket" { ... }
+        pattern = r'resource\s+"([^"]+)"\s+"([^"]+)"'
+        for match in re.finditer(pattern, content):
+            resource_type = match.group(1)
+            resource_name = match.group(2)
+            expected.append(f"{resource_type}.{resource_name}")
+
+    return expected
+
+
+async def _run_terraform(
+    work_dir: Path, endpoint: str, timeout: int, original_services: set[str] | None = None
+) -> tuple[TerraformApplyResult, PreprocessingDelta | None]:
     """Run terraform init and apply against LocalStack.
 
     Instead of using tflocal (which can generate unsupported endpoints), we:
     1. Pre-create our own LocalStack provider override file
     2. Run terraform directly with proper AWS environment variables
+
+    Args:
+        work_dir: Terraform working directory
+        endpoint: LocalStack endpoint URL
+        timeout: Timeout for terraform operations
+        original_services: Services detected before preprocessing (for tracking)
+
+    Returns:
+        Tuple of (TerraformApplyResult, PreprocessingDelta or None)
     """
     import os
 
@@ -944,16 +1279,21 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
         }
     )
 
-    # Pre-process Terraform files to fix common issues
-    _normalize_provider_versions(work_dir)
-    _remove_aws_profile_references(work_dir)
-    _remove_backend_configuration(work_dir)
-    _remove_assume_role_configuration(work_dir)
-    _remove_provider_default_tags(work_dir)
-    _create_stub_lambda_sources(work_dir)
-    _generate_missing_tfvars(work_dir)
-    _remove_pro_only_resources(work_dir)
-    _relax_module_version_constraints(work_dir)
+    # Run preprocessing with tracking
+    preprocessing_delta = None
+    if original_services is not None:
+        preprocessing_delta = _preprocess_terraform(work_dir, original_services)
+    else:
+        # Fallback for backward compatibility - run preprocessing without tracking
+        _normalize_provider_versions(work_dir)
+        _remove_aws_profile_references(work_dir)
+        _remove_backend_configuration(work_dir)
+        _remove_assume_role_configuration(work_dir)
+        _remove_provider_default_tags(work_dir)
+        _create_stub_lambda_sources(work_dir)
+        _generate_missing_tfvars(work_dir)
+        _remove_pro_only_resources(work_dir)
+        _relax_module_version_constraints(work_dir)
 
     # Create our own LocalStack provider override (instead of using tflocal)
     # This avoids tflocal generating unsupported endpoint configurations
@@ -973,9 +1313,12 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
 
         if proc.returncode != 0:
-            return TerraformApplyResult(
-                success=False,
-                logs=f"Init failed:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
+            return (
+                TerraformApplyResult(
+                    success=False,
+                    logs=f"Init failed:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
+                ),
+                preprocessing_delta,
             )
 
         # terraform apply
@@ -995,24 +1338,30 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
         error_output = stderr.decode()
 
         if proc.returncode != 0:
-            return TerraformApplyResult(
-                success=False,
-                logs=f"Apply failed:\nSTDOUT: {output}\nSTDERR: {error_output}",
+            return (
+                TerraformApplyResult(
+                    success=False,
+                    logs=f"Apply failed:\nSTDOUT: {output}\nSTDERR: {error_output}",
+                ),
+                preprocessing_delta,
             )
 
         # Count resources
         resource_count = output.count("created")
 
-        return TerraformApplyResult(
-            success=True,
-            resources_created=resource_count,
-            logs=output,
+        return (
+            TerraformApplyResult(
+                success=True,
+                resources_created=resource_count,
+                logs=output,
+            ),
+            preprocessing_delta,
         )
 
     except TimeoutError:
-        return TerraformApplyResult(success=False, logs="Terraform timed out")
+        return (TerraformApplyResult(success=False, logs="Terraform timed out"), preprocessing_delta)
     except Exception as e:
-        return TerraformApplyResult(success=False, logs=str(e))
+        return (TerraformApplyResult(success=False, logs=str(e)), preprocessing_delta)
 
 
 async def _run_terraform_destroy(work_dir: Path, endpoint: str) -> None:

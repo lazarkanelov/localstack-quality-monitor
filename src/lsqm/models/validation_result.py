@@ -1,9 +1,16 @@
 """ValidationResult model - represents the outcome of validating one architecture."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from lsqm.models.preprocessing_delta import PreprocessingDelta
+    from lsqm.models.resource_inventory import ResourceInventory
+    from lsqm.models.test_quality import TestQualityAnalysis
 
 
 class ValidationStatus(str, Enum):
@@ -35,7 +42,7 @@ class TerraformApplyResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "TerraformApplyResult":
+    def from_dict(cls, data: dict) -> TerraformApplyResult:
         """Deserialize from dictionary."""
         return cls(
             success=data.get("success", False),
@@ -66,7 +73,7 @@ class TestResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "TestResult":
+    def from_dict(cls, data: dict) -> TestResult:
         """Deserialize from dictionary."""
         return cls(
             test_name=data["test_name"],
@@ -100,7 +107,7 @@ class OperationResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "OperationResult":
+    def from_dict(cls, data: dict) -> OperationResult:
         """Deserialize from dictionary."""
         return cls(
             operation=data["operation"],
@@ -137,7 +144,7 @@ class PytestResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "PytestResult":
+    def from_dict(cls, data: dict) -> PytestResult:
         """Deserialize from dictionary."""
         return cls(
             total=data.get("total", 0),
@@ -166,6 +173,10 @@ class ValidationResult:
     pytest_results: PytestResult | None = None
     container_logs: str = ""
     error_message: str | None = None
+    # New fields for enhanced tracking
+    preprocessing_delta: PreprocessingDelta | None = None
+    resource_inventory: ResourceInventory | None = None
+    test_quality: TestQualityAnalysis | None = None
 
     def to_dict(self) -> dict:
         """Serialize to dictionary for JSON storage."""
@@ -180,13 +191,28 @@ class ValidationResult:
             "pytest_results": self.pytest_results.to_dict() if self.pytest_results else None,
             "container_logs": self.container_logs,
             "error_message": self.error_message,
+            "preprocessing_delta": (
+                self.preprocessing_delta.to_dict() if self.preprocessing_delta else None
+            ),
+            "resource_inventory": (
+                self.resource_inventory.to_dict() if self.resource_inventory else None
+            ),
+            "test_quality": self.test_quality.to_dict() if self.test_quality else None,
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ValidationResult":
+    def from_dict(cls, data: dict) -> ValidationResult:
         """Deserialize from dictionary."""
+        # Import here to avoid circular imports
+        from lsqm.models.preprocessing_delta import PreprocessingDelta
+        from lsqm.models.resource_inventory import ResourceInventory
+        from lsqm.models.test_quality import TestQualityAnalysis
+
         tf_data = data.get("terraform_apply")
         pytest_data = data.get("pytest_results")
+        preprocessing_data = data.get("preprocessing_delta")
+        inventory_data = data.get("resource_inventory")
+        quality_data = data.get("test_quality")
 
         return cls(
             arch_hash=data["arch_hash"],
@@ -199,12 +225,19 @@ class ValidationResult:
             pytest_results=PytestResult.from_dict(pytest_data) if pytest_data else None,
             container_logs=data.get("container_logs", ""),
             error_message=data.get("error_message"),
+            preprocessing_delta=(
+                PreprocessingDelta.from_dict(preprocessing_data) if preprocessing_data else None
+            ),
+            resource_inventory=(
+                ResourceInventory.from_dict(inventory_data) if inventory_data else None
+            ),
+            test_quality=TestQualityAnalysis.from_dict(quality_data) if quality_data else None,
         )
 
     @classmethod
     def create_error(
         cls, arch_hash: str, run_id: str, error_message: str, started_at: datetime
-    ) -> "ValidationResult":
+    ) -> ValidationResult:
         """Create an ERROR result."""
         now = datetime.utcnow()
         return cls(
@@ -220,7 +253,7 @@ class ValidationResult:
     @classmethod
     def create_timeout(
         cls, arch_hash: str, run_id: str, started_at: datetime
-    ) -> "ValidationResult":
+    ) -> ValidationResult:
         """Create a TIMEOUT result."""
         now = datetime.utcnow()
         return cls(

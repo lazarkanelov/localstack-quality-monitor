@@ -10,6 +10,7 @@ from pathlib import Path
 from anthropic import Anthropic, APIConnectionError, APIError, RateLimitError
 
 from lsqm import __version__
+from lsqm.services.test_analyzer import analyze_test_quality
 
 # Retry configuration for Claude API
 MAX_RETRIES = 3
@@ -442,6 +443,30 @@ def _generate_single_app(
                     "tokens": total_tokens,
                 }
 
+    # Analyze test quality
+    test_code = files.get("test_app.py", "")
+    quality_analysis = None
+    quality_data = None
+
+    if test_code:
+        try:
+            quality_analysis = analyze_test_quality(
+                test_code=test_code,
+            )
+            quality_data = quality_analysis.to_dict()
+
+            # Warn about low quality tests but don't reject
+            if logger and quality_analysis.quality_score < 0.5:
+                logger.warning(
+                    f"Low test quality for {arch_hash[:8]}: "
+                    f"score={quality_analysis.quality_score:.2f}, "
+                    f"issues={quality_analysis.issue_count_by_severity}"
+                )
+
+        except Exception as e:
+            if logger:
+                logger.warning(f"Failed to analyze test quality for {arch_hash[:8]}: {e}")
+
     # Save files using centralized function
     from datetime import datetime
 
@@ -457,6 +482,7 @@ def _generate_single_app(
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "files_generated": list(files.keys()),
+        "test_quality": quality_data,
     }
 
     save_generated_app(
@@ -470,7 +496,11 @@ def _generate_single_app(
     # Mark the architecture as having an app in the index
     mark_architecture_has_app(arch_hash, artifacts_dir, logger=logger)
 
-    return {"success": True, "tokens": total_tokens}
+    return {
+        "success": True,
+        "tokens": total_tokens,
+        "quality_score": quality_analysis.quality_score if quality_analysis else None,
+    }
 
 
 def _extract_files_from_response(content: str) -> dict[str, str]:

@@ -438,7 +438,8 @@ def analyze_failure(
         "aws_error_code": None,  # e.g., InvalidParameterValueException
         "affected_service": None,
         "affected_resource": None,
-        "is_localstack_issue": True,  # vs test setup issue
+        "is_localstack_issue": False,  # Default: assume config issue until proven LocalStack
+        "localstack_issue_reason": None,  # Why we think it's a LocalStack issue
     }
 
     # === EXTRACT ACTUAL ERROR FROM TERRAFORM OUTPUT ===
@@ -659,6 +660,43 @@ def analyze_failure(
             analysis["is_localstack_issue"] = False
             analysis["category"] = "config"
 
+        # Pattern 29: Module not found in registry
+        if "module is not available" in terraform_output.lower() or "no available releases match" in terraform_output.lower():
+            analysis["error_message"] = "Terraform module not found in registry"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "terraform_registry"
+
+        # Pattern 30: Invalid HCL syntax
+        if "invalid syntax" in terraform_output.lower() or "unexpected token" in terraform_output.lower():
+            analysis["error_message"] = "Invalid Terraform HCL syntax"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "syntax"
+
+        # Pattern 31: Required provider constraint not met
+        if "required_providers" in terraform_output.lower() and "constraint" in terraform_output.lower():
+            analysis["error_message"] = "Provider version constraint not satisfiable"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "provider_version"
+
+        # Pattern 32: Local module source not found
+        if "source code was not found" in terraform_output.lower():
+            analysis["error_message"] = "Module source path not found"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "missing_files"
+
+        # Pattern 33: VPC/Networking prerequisite issues
+        if any(x in terraform_output.lower() for x in ["vpcid", "subnetid", "security group"]):
+            if "not found" in terraform_output.lower() or "invalid" in terraform_output.lower():
+                analysis["error_message"] = "VPC/Network resource not found - missing prerequisite"
+                analysis["is_localstack_issue"] = False
+                analysis["category"] = "missing_prereq"
+
+        # Pattern 34: Terraform lock file issues
+        if "lock file" in terraform_output.lower() and ("missing" in terraform_output.lower() or "checksum" in terraform_output.lower()):
+            analysis["error_message"] = "Terraform dependency lock file issue"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "terraform_init"
+
     # === DETECT AFFECTED SERVICE ===
     combined = f"{terraform_output}\n{container_logs}".lower()
     service_patterns = [
@@ -745,6 +783,16 @@ def analyze_failure(
                 analysis["localstack_validation"] = match.group(0).strip()
                 break
 
+    # === POSITIVE LOCALSTACK ISSUE IDENTIFICATION ===
+    # Only mark as LocalStack issue if we have positive evidence
+    # This overrides the default False value when we're confident it's a LocalStack issue
+    is_ls_issue, ls_reason = _is_localstack_issue(
+        terraform_output, container_logs, analysis
+    )
+    if is_ls_issue:
+        analysis["is_localstack_issue"] = True
+        analysis["localstack_issue_reason"] = ls_reason
+
     # === ERROR MESSAGE PARITY ANALYSIS ===
     # Check if LocalStack error messages match AWS format
     if analysis.get("aws_error_code") and analysis.get("is_localstack_issue"):
@@ -767,6 +815,105 @@ def analyze_failure(
             analysis["has_error_parity"] = parity_result.has_parity
 
     return analysis
+
+
+# Patterns for positive identification of LocalStack issues
+# These indicate the error definitely came from LocalStack, not config/setup
+LOCALSTACK_POSITIVE_PATTERNS = [
+    # Error came from LocalStack API endpoint
+    (r"localhost:4566", "Error from LocalStack endpoint"),
+    (r"localhost:\d{4,5}.*error", "Error from LocalStack port"),
+    (r"localstack\.cloud", "Error from LocalStack cloud endpoint"),
+    # Known LocalStack error messages
+    (r"not implemented in localstack", "Feature not implemented in LocalStack"),
+    (r"localstack pro required", "Requires LocalStack Pro"),
+    (r"service .* not enabled", "Service not enabled in LocalStack"),
+    (r"not included in your current license", "Requires LocalStack Pro license"),
+    # Moto/LocalStack internal errors
+    (r"moto.*exception", "Moto implementation error"),
+    (r"localstack.*exception", "LocalStack internal exception"),
+    (r"localstack\.services\.", "LocalStack service error"),
+    # AWS API errors that reached LocalStack (not config errors)
+    (r"botocore\.exceptions\.ClientError", "AWS client error from LocalStack"),
+    # Resource creation/operation failures in LocalStack
+    (r"error creating .* in localstack", "Resource creation failed in LocalStack"),
+    (r"operation .* failed.*4566", "Operation failed on LocalStack"),
+]
+
+
+def _is_localstack_issue(
+    terraform_output: str,
+    container_logs: str,
+    analysis: dict,
+) -> tuple[bool, str]:
+    """Determine if error is from LocalStack vs config/setup.
+
+    Uses positive identification - only returns True if we have strong evidence
+    the error came from LocalStack itself.
+
+    Args:
+        terraform_output: Terraform apply output
+        container_logs: LocalStack container logs
+        analysis: Current analysis dict (may contain hints)
+
+    Returns:
+        Tuple of (is_localstack_issue, reason)
+    """
+    combined = f"{terraform_output}\n{container_logs}".lower()
+
+    # Check if already marked as not LocalStack (config issue patterns matched)
+    # If a specific config pattern matched, trust that determination
+    if analysis.get("category") in (
+        "config", "provider_config", "provider_version", "terraform_init",
+        "terraform_registry", "missing_files", "syntax", "ci_environment",
+        "infrastructure", "missing_prereq",
+    ):
+        return False, ""
+
+    # Check positive patterns
+    for pattern, reason in LOCALSTACK_POSITIVE_PATTERNS:
+        if re.search(pattern, combined, re.IGNORECASE):
+            return True, reason
+
+    # Check for LocalStack-specific indicators in analysis
+    if analysis.get("not_implemented"):
+        return True, "Feature not implemented"
+
+    if analysis.get("localstack_exception"):
+        return True, "LocalStack internal exception"
+
+    if analysis.get("moto_leak"):
+        return True, "Moto implementation leak"
+
+    if analysis.get("stub_issue"):
+        return True, "Service stub limitation"
+
+    # Check for AWS API errors that clearly reached LocalStack
+    # These are AWS exception types that indicate the request reached the service
+    aws_service_exceptions = [
+        "ResourceNotFoundException",
+        "ResourceInUseException",
+        "ValidationException",
+        "InvalidParameterValueException",
+        "ServiceException",
+        "InternalServiceException",
+        "AccessDeniedException",
+        "ResourceAlreadyExistsException",
+    ]
+
+    error_code = analysis.get("aws_error_code", "")
+    if error_code in aws_service_exceptions:
+        # Check if it's clearly from LocalStack (contains localhost or localstack)
+        if "localhost" in combined or "localstack" in combined:
+            return True, f"AWS API error ({error_code}) from LocalStack"
+
+    # If we have a timeout on a resource operation, it's likely LocalStack
+    if analysis.get("category") == "timeout":
+        if "creating" in combined or "waiting" in combined:
+            return True, "Resource operation timeout in LocalStack"
+
+    # Default: not enough evidence to blame LocalStack
+    return False, ""
 
 
 def _get_inline_template() -> str:
