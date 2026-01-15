@@ -119,6 +119,27 @@ def extract_services_from_terraform(tf_content: str) -> set[str]:
     return services
 
 
+def extract_services_from_terraform_dir(tf_dir) -> set[str]:
+    """Extract AWS services used in Terraform files in a directory.
+
+    Args:
+        tf_dir: Path to directory containing Terraform files
+
+    Returns:
+        Set of AWS service names
+    """
+    from pathlib import Path
+
+    services = set()
+    tf_path = Path(tf_dir)
+
+    for tf_file in tf_path.glob("*.tf"):
+        content = tf_file.read_text()
+        services.update(extract_services_from_terraform(content))
+
+    return services
+
+
 def is_service_supported(service: str) -> bool:
     """Check if a service is supported by LocalStack Community."""
     return service.lower() in LOCALSTACK_COMMUNITY_SERVICES

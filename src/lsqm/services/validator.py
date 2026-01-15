@@ -29,7 +29,7 @@ from lsqm.models.preprocessing_delta import (
     StubInfo,
 )
 from lsqm.models.resource_inventory import ResourceInventory, TerraformResource
-from lsqm.services.localstack_services import extract_services_from_terraform
+from lsqm.services.localstack_services import extract_services_from_terraform_dir
 
 # Track active containers for cleanup
 _active_containers: list = []
@@ -287,7 +287,7 @@ async def _validate_single(
             )
 
         # Extract original services BEFORE preprocessing for tracking
-        original_services = extract_services_from_terraform(temp_dir)
+        original_services = extract_services_from_terraform_dir(temp_dir)
 
         # Run terraform init and apply with preprocessing tracking
         tf_result, preprocessing_delta = await _run_terraform(
@@ -1058,7 +1058,7 @@ def _preprocess_terraform(work_dir: Path, original_services: set[str]) -> Prepro
             modified_files.append(tf_file.name)
 
     # Re-extract services from modified Terraform files
-    final_services = extract_services_from_terraform(work_dir)
+    final_services = extract_services_from_terraform_dir(work_dir)
 
     # Build service reconciliation
     removed_services = original_services - final_services
