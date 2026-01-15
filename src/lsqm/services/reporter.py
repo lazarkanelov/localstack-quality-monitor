@@ -707,6 +707,16 @@ def analyze_failure(
             analysis["is_localstack_issue"] = False
             analysis["category"] = "missing_files"
 
+        # Pattern 35: Reference to undeclared resource (Terraform config error)
+        if "reference to undeclared resource" in terraform_output.lower():
+            res_match = re.search(r'resource\s+"([^"]+)"\s+"([^"]+)"', terraform_output)
+            if res_match:
+                analysis["error_message"] = f"Reference to undeclared resource: {res_match.group(1)}.{res_match.group(2)}"
+            else:
+                analysis["error_message"] = "Reference to undeclared resource in Terraform config"
+            analysis["is_localstack_issue"] = False
+            analysis["category"] = "config"
+
         # Pattern 33: VPC/Networking prerequisite issues
         if any(x in terraform_output.lower() for x in ["vpcid", "subnetid", "security group"]):
             if "not found" in terraform_output.lower() or "invalid" in terraform_output.lower():
@@ -844,9 +854,10 @@ def analyze_failure(
 # These indicate the error definitely came from LocalStack, not config/setup
 LOCALSTACK_POSITIVE_PATTERNS = [
     # Error came from LocalStack API endpoint
-    (r"localhost:4566", "Error from LocalStack endpoint"),
-    (r"localhost:\d{4,5}.*error", "Error from LocalStack port"),
-    (r"localstack\.cloud", "Error from LocalStack cloud endpoint"),
+    (r"localhost:4566.*error|error.*localhost:4566", "Error from LocalStack endpoint"),
+    (r"localhost:\d{4,5}.*error|error.*localhost:\d{4,5}", "Error from LocalStack port"),
+    # Note: We removed the generic localstack\.cloud pattern because it matches
+    # documentation URLs like docs.localstack.cloud which appear in warnings
     # Known LocalStack error messages
     (r"not implemented in localstack", "Feature not implemented in LocalStack"),
     (r"localstack pro required", "Requires LocalStack Pro"),
