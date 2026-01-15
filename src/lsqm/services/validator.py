@@ -410,6 +410,82 @@ def _normalize_provider_versions(work_dir: Path) -> None:
             tf_file.write_text(updated)
 
 
+def _remove_aws_profile_references(work_dir: Path) -> None:
+    """Remove AWS profile references from provider blocks.
+
+    When Terraform files have `profile = "default"` or similar, the AWS provider
+    tries to load credentials from ~/.aws/config BEFORE tflocal can override it.
+    This causes "failed to get shared config profile" errors even when we set
+    AWS_ACCESS_KEY_ID/SECRET_ACCESS_KEY environment variables.
+
+    By removing the profile attribute, the provider falls back to environment
+    variables, which we control.
+    """
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+        original = content
+
+        # Remove profile = "..." from provider blocks
+        # Handles: profile = "default", profile="custom", profile  =  "any"
+        content = re.sub(r'\s*profile\s*=\s*"[^"]*"\s*\n?', "\n", content)
+
+        # Also remove shared_credentials_file and shared_config_files if present
+        content = re.sub(r'\s*shared_credentials_file\s*=\s*"[^"]*"\s*\n?', "\n", content)
+        content = re.sub(r'\s*shared_config_files\s*=\s*\[[^\]]*\]\s*\n?', "\n", content)
+
+        if content != original:
+            tf_file.write_text(content)
+
+
+def _create_stub_lambda_sources(work_dir: Path) -> None:
+    """Create stub source files for Lambda functions that reference missing files.
+
+    Many Terraform architectures reference source files like ./src/app.js or
+    ./src/handler.py that don't exist in our copy. Instead of failing, we create
+    minimal stub files that allow Terraform to complete the archive_file creation.
+    """
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+
+        # Find source_file references in archive_file data sources
+        # e.g., source_file = "${path.module}/src/app.js"
+        source_files = re.findall(
+            r'source_file\s*=\s*"(?:\$\{path\.module\}/)?([^"]+)"', content
+        )
+
+        # Find source_dir references
+        # e.g., source_dir = "${path.module}/src"
+        source_dirs = re.findall(
+            r'source_dir\s*=\s*"(?:\$\{path\.module\}/)?([^"]+)"', content
+        )
+
+        # Create stub files
+        for src_file in source_files:
+            file_path = work_dir / src_file
+            if not file_path.exists():
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                # Create appropriate stub based on file extension
+                ext = file_path.suffix.lower()
+                if ext == ".js":
+                    file_path.write_text('exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n')
+                elif ext == ".py":
+                    file_path.write_text('def handler(event, context):\n    return {"statusCode": 200, "body": "stub"}\n')
+                elif ext == ".ts":
+                    file_path.write_text('export const handler = async (event: any) => { return { statusCode: 200, body: "stub" }; };\n')
+                else:
+                    file_path.write_text("# stub file\n")
+
+        # Create stub directories with index files
+        for src_dir in source_dirs:
+            dir_path = work_dir / src_dir
+            if not dir_path.exists():
+                dir_path.mkdir(parents=True, exist_ok=True)
+                # Create a stub index.js file (common for Lambda)
+                (dir_path / "index.js").write_text(
+                    'exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n'
+                )
+
+
 async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> TerraformApplyResult:
     """Run tflocal init and apply."""
     import os
@@ -434,8 +510,10 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
         }
     )
 
-    # Normalize provider versions before init to support modern Lambda runtimes
+    # Pre-process Terraform files to fix common issues
     _normalize_provider_versions(work_dir)
+    _remove_aws_profile_references(work_dir)
+    _create_stub_lambda_sources(work_dir)
 
     try:
         # tflocal init
