@@ -754,22 +754,58 @@ def _generate_missing_tfvars(work_dir: Path) -> dict[str, str]:
             value = "{}"
         else:
             # String type - use smart defaults based on common variable names
-            if var_name in ("name", "project_name", "app_name", "service_name"):
+            var_lower = var_name.lower()
+            if var_name in ("name", "project_name", "app_name", "service_name", "function_name"):
                 value = '"lsqm-test"'
             elif var_name in ("environment", "env", "stage"):
                 value = '"test"'
             elif var_name in ("region", "aws_region"):
                 value = '"us-east-1"'
-            elif "bucket" in var_name.lower():
+            elif "bucket" in var_lower:
                 value = '"lsqm-test-bucket"'
-            elif "domain" in var_name.lower():
+            elif "domain" in var_lower:
                 value = '"example.com"'
-            elif "email" in var_name.lower():
+            elif "email" in var_lower:
                 value = '"test@example.com"'
-            elif "prefix" in var_name.lower():
+            elif "prefix" in var_lower:
                 value = '"lsqm"'
-            elif "suffix" in var_name.lower():
+            elif "suffix" in var_lower:
                 value = '"test"'
+            elif "description" in var_lower:
+                value = '"LSQM test resource"'
+            elif "path" in var_lower or "dir" in var_lower or "directory" in var_lower:
+                value = '"."'
+            elif "source" in var_lower and ("code" in var_lower or "lambda" in var_lower):
+                value = '"."'
+            elif "artifact" in var_lower:
+                value = '"lsqm-artifact"'
+            elif "version" in var_lower:
+                value = '"1.0.0"'
+            elif "runtime" in var_lower:
+                value = '"python3.9"'
+            elif "handler" in var_lower:
+                value = '"index.handler"'
+            elif "memory" in var_lower:
+                value = '"128"'
+            elif "timeout" in var_lower:
+                value = '"30"'
+            elif "role" in var_lower and "arn" in var_lower:
+                value = '"arn:aws:iam::000000000000:role/lsqm-test-role"'
+            elif "arn" in var_lower:
+                value = '"arn:aws:service:us-east-1:000000000000:resource/lsqm-test"'
+            elif "account" in var_lower and "id" in var_lower:
+                value = '"000000000000"'
+            elif "key" in var_lower and "kms" not in var_lower:
+                value = '"lsqm-key"'
+            elif "tag" in var_lower:
+                value = '"lsqm"'
+            elif "namespace" in var_lower:
+                value = '"lsqm"'
+            elif "label" in var_lower:
+                value = '"lsqm"'
+            elif "context" in var_lower:
+                # For null-label context pattern
+                value = '{}'
             else:
                 value = f'"lsqm-{var_name}"'
 
@@ -1019,6 +1055,173 @@ def _remove_provider_default_tags(work_dir: Path) -> None:
             tf_file.write_text(content)
 
 
+def _remove_unsupported_resources(work_dir: Path) -> list[RemovedResource]:
+    """Remove resources for services not supported in LocalStack Community.
+
+    Returns:
+        List of RemovedResource tracking what was removed.
+    """
+    removed_resources: list[RemovedResource] = []
+
+    # Resource types that are not supported in LocalStack Community
+    unsupported_resource_patterns = [
+        r"aws_opensearch_",
+        r"aws_elasticsearch_",
+        r"aws_waf_",
+        r"aws_wafv2_",
+        r"aws_wafregional_",
+        r"aws_guardduty_",
+        r"aws_inspector_",
+        r"aws_macie_",
+        r"aws_securityhub_",
+        r"aws_detective_",
+        r"aws_config_",
+        r"aws_cloudtrail_",  # Partially supported
+        r"aws_organizations_",
+        r"aws_servicecatalog_",
+        r"aws_ssoadmin_",
+        r"aws_identitystore_",
+    ]
+
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+        original = content
+        rel_path = str(tf_file.relative_to(work_dir))
+
+        for pattern in unsupported_resource_patterns:
+            # Find and track resource blocks before removing
+            resource_pattern = rf'resource\s+"({pattern}[^"]*)"\s+"([^"]+)"\s*\{{[^{{}}]*(?:\{{[^{{}}]*\}}[^{{}}]*)*\}}'
+            for match in re.finditer(resource_pattern, content, re.DOTALL):
+                removed_resources.append(
+                    RemovedResource(
+                        resource_type=match.group(1),
+                        resource_name=match.group(2),
+                        reason="unsupported",
+                        file_path=rel_path,
+                    )
+                )
+
+            # Remove resource blocks
+            content = re.sub(
+                resource_pattern,
+                "# Resource removed - not supported in LocalStack Community",
+                content,
+                flags=re.DOTALL,
+            )
+
+            # Find and track data blocks before removing
+            data_pattern = rf'data\s+"({pattern}[^"]*)"\s+"([^"]+)"\s*\{{[^{{}}]*(?:\{{[^{{}}]*\}}[^{{}}]*)*\}}'
+            for match in re.finditer(data_pattern, content, re.DOTALL):
+                removed_resources.append(
+                    RemovedResource(
+                        resource_type=match.group(1),
+                        resource_name=match.group(2),
+                        reason="unsupported",
+                        file_path=rel_path,
+                    )
+                )
+
+            # Remove data blocks
+            content = re.sub(
+                data_pattern,
+                "# Data source removed - not supported in LocalStack Community",
+                content,
+                flags=re.DOTALL,
+            )
+
+        if content != original:
+            tf_file.write_text(content)
+
+    return removed_resources
+
+
+def _fix_dangling_references(work_dir: Path, removed_resources: list[RemovedResource]) -> None:
+    """Fix references to removed resources.
+
+    After removing resources, there may be dangling references in other resources
+    that would cause Terraform to fail. This function comments out or replaces
+    those references.
+    """
+    if not removed_resources:
+        return
+
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+        original = content
+
+        # Replace references to removed resources
+        for res in removed_resources:
+            full_ref = f"{res.resource_type}.{res.resource_name}"
+
+            # Replace references like: aws_waf_rule.example.id -> ""
+            content = re.sub(
+                rf'\b{re.escape(full_ref)}\.[\w.]+',
+                '""',
+                content,
+            )
+
+            # Also handle data source references like: data.aws_waf_rule.example.id
+            data_ref = f"data.{res.resource_type}.{res.resource_name}"
+            content = re.sub(
+                rf'\b{re.escape(data_ref)}\.[\w.]+',
+                '""',
+                content,
+            )
+
+        if content != original:
+            tf_file.write_text(content)
+
+
+def _remove_null_label_dependencies(work_dir: Path) -> None:
+    """Handle null-label module patterns that require context objects.
+
+    The null-label pattern from cloudposse requires a 'context' input that
+    is typically passed from a parent module. For standalone testing, we
+    provide a minimal context or remove the dependency.
+    """
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+        original = content
+
+        # Check if this uses the null-label pattern
+        if "cloudposse/label/null" in content or "context = " in content:
+            # Add a default context variable if not present
+            if 'variable "context"' not in content:
+                # Check if there's a variables.tf file
+                vars_file = work_dir / "variables.tf"
+                if vars_file.exists():
+                    vars_content = vars_file.read_text()
+                    if 'variable "context"' not in vars_content:
+                        vars_content += '''
+
+# Auto-generated context variable for null-label compatibility
+variable "context" {
+  type = any
+  default = {
+    enabled             = true
+    namespace           = "lsqm"
+    environment         = "test"
+    stage               = "test"
+    name                = "test"
+    delimiter           = "-"
+    attributes          = []
+    tags                = {}
+    additional_tag_map  = {}
+    regex_replace_chars = null
+    label_order         = ["namespace", "environment", "stage", "name"]
+    id_length_limit     = null
+    label_key_case      = null
+    label_value_case    = null
+  }
+  description = "Single object for setting entire context at once"
+}
+'''
+                        vars_file.write_text(vars_content)
+
+        if content != original:
+            tf_file.write_text(content)
+
+
 def _preprocess_terraform(work_dir: Path, original_services: set[str]) -> PreprocessingDelta:
     """Run all preprocessing steps and track changes.
 
@@ -1038,6 +1241,16 @@ def _preprocess_terraform(work_dir: Path, original_services: set[str]) -> Prepro
     stub_info = _create_stub_lambda_sources(work_dir)
     generated_tfvars = _generate_missing_tfvars(work_dir)
     removed_resources = _remove_pro_only_resources(work_dir)
+
+    # Remove unsupported resources (WAF, OpenSearch, etc.)
+    unsupported_removed = _remove_unsupported_resources(work_dir)
+    removed_resources.extend(unsupported_removed)
+
+    # Fix dangling references to removed resources
+    _fix_dangling_references(work_dir, removed_resources)
+
+    # Handle null-label module patterns
+    _remove_null_label_dependencies(work_dir)
 
     # Run preprocessing steps that don't track (but modify files)
     _normalize_provider_versions(work_dir)
