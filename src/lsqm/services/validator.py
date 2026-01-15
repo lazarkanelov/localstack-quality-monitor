@@ -822,31 +822,41 @@ def _remove_pro_only_resources(work_dir: Path) -> bool:
 
 
 def _relax_module_version_constraints(work_dir: Path) -> None:
-    """Relax or remove strict module version constraints.
+    """Relax version constraints in module source blocks only.
 
     Some modules have version constraints that can't be resolved because
-    the exact version isn't available. We relax these to allow any version
-    that Terraform can find.
+    the exact version isn't available. We remove these constraints to allow
+    Terraform to use whatever version is available.
+
+    IMPORTANT: We only modify module blocks, NOT required_providers blocks.
+    Provider version constraints must be preserved for Terraform to function.
     """
     for tf_file in work_dir.glob("*.tf"):
         content = tf_file.read_text()
         original = content
 
-        # Pattern 1: Remove exact version constraints in module blocks
-        # version = "1.2.3" -> removed
-        content = re.sub(
-            r'(\s*)version\s*=\s*"[0-9]+\.[0-9]+\.[0-9]+"\s*\n',
-            r"\1# version constraint removed for compatibility\n",
-            content,
-        )
+        # Find and modify module blocks only
+        # Look for: module "name" { ... version = "..." ... }
+        # We need to remove the version line inside module blocks
 
-        # Pattern 2: Relax version constraints with operators
-        # version = "~> 1.0" -> version = ">= 0.0.0"
-        # version = ">= 1.0, < 2.0" -> version = ">= 0.0.0"
+        def remove_module_version(match: re.Match) -> str:
+            """Remove version constraint from a module block."""
+            block = match.group(0)
+            # Remove version = "..." line, preserving other content
+            modified = re.sub(
+                r'\n\s*version\s*=\s*"[^"]*"',
+                "",
+                block,
+            )
+            return modified
+
+        # Match module blocks: module "name" { ... }
+        # This regex handles nested braces
         content = re.sub(
-            r'version\s*=\s*"[~><=\s,0-9.]+"\s*\n',
-            '# version constraint relaxed for compatibility\n',
+            r'module\s+"[^"]+"\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',
+            remove_module_version,
             content,
+            flags=re.DOTALL,
         )
 
         if content != original:
