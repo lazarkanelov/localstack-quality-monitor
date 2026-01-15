@@ -375,11 +375,45 @@ async def _wait_for_health(endpoint: str, timeout: int = 60) -> bool:
 
 
 # Endpoints that tflocal may add but are not supported by the Terraform AWS provider
+# These cause "unsupported provider endpoint" errors during terraform init
 UNSUPPORTED_TFLOCAL_ENDPOINTS = {
     "bedrock",
     "bedrockagent",
     "bedrockruntime",
     "verifiedpermissions",
+    "controltower",
+    "finspace",
+    "iottwinmaker",
+    "ivs",
+    "ivschat",
+    "kendra",
+    "keyspaces",
+    "lakeformation",
+    "lexv2models",
+    "location",
+    "lookoutmetrics",
+    "m2",
+    "managedgrafana",
+    "memorydb",
+    "oam",
+    "opensearchserverless",
+    "pipes",
+    "pricing",
+    "recyclebin",
+    "rolesanywhere",
+    "rum",
+    "scheduler",
+    "securitylake",
+    "serverlessrepo",
+    "servicecatalogappregistry",
+    "ssoadmin",
+    "ssmcontacts",
+    "ssmincidents",
+    "ssmsap",
+    "timestreamwrite",
+    "transcribe",
+    "vpclattice",
+    "workspaces",
 }
 
 
@@ -404,6 +438,116 @@ def _cleanup_tflocal_overrides(work_dir: Path) -> None:
 
     if content != original_content:
         override_file.write_text(content)
+
+
+def _pre_create_localstack_override(work_dir: Path, endpoint: str) -> None:
+    """Pre-create a LocalStack provider override file with only supported endpoints.
+
+    This runs BEFORE tflocal init to prevent it from generating an override file
+    with unsupported endpoints that would cause terraform init to fail.
+
+    The override file configures the AWS provider to point to LocalStack.
+    """
+    # Standard AWS services supported by both Terraform AWS provider and LocalStack Community
+    supported_services = [
+        "accessanalyzer",
+        "acm",
+        "apigateway",
+        "appconfig",
+        "applicationautoscaling",
+        "appmesh",
+        "autoscaling",
+        "backup",
+        "batch",
+        "ce",
+        "cloudcontrol",
+        "cloudformation",
+        "cloudfront",
+        "cloudtrail",
+        "cloudwatch",
+        "codecommit",
+        "codeartifact",
+        "codebuild",
+        "codepipeline",
+        "configservice",
+        "dax",
+        "docdb",
+        "dynamodb",
+        "ec2",
+        "ecr",
+        "ecs",
+        "efs",
+        "eks",
+        "elasticbeanstalk",
+        "elasticsearch",
+        "elb",
+        "elbv2",
+        "events",
+        "firehose",
+        "fis",
+        "glacier",
+        "iam",
+        "identitystore",
+        "kafka",
+        "kinesis",
+        "kinesisanalytics",
+        "kms",
+        "lambda",
+        "logs",
+        "mwaa",
+        "opensearch",
+        "organizations",
+        "ram",
+        "rds",
+        "redshiftdata",
+        "resourcegroups",
+        "resourcegroupstaggingapi",
+        "route53",
+        "route53domains",
+        "route53resolver",
+        "s3",
+        "s3control",
+        "sagemaker",
+        "secretsmanager",
+        "servicediscovery",
+        "servicequotas",
+        "ses",
+        "sesv2",
+        "sfn",
+        "sns",
+        "sqs",
+        "ssm",
+        "sts",
+        "swf",
+        "waf",
+        "wafregional",
+        "wafv2",
+    ]
+
+    # Generate the endpoints block
+    endpoints_block = "\n".join(
+        [f'    {svc} = "{endpoint}"' for svc in sorted(supported_services)]
+    )
+
+    override_content = f'''# Auto-generated LocalStack provider override
+# This file configures Terraform to use LocalStack instead of AWS
+
+provider "aws" {{
+  access_key                  = "test"
+  secret_key                  = "test"
+  region                      = "us-east-1"
+  skip_credentials_validation = true
+  skip_metadata_api_check     = true
+  skip_requesting_account_id  = true
+
+  endpoints {{
+{endpoints_block}
+  }}
+}}
+'''
+
+    override_file = work_dir / "localstack_providers_override.tf"
+    override_file.write_text(override_content)
 
 
 def _normalize_provider_versions(work_dir: Path) -> None:
@@ -502,27 +646,229 @@ def _create_stub_lambda_sources(work_dir: Path) -> None:
                 )
 
 
+def _generate_missing_tfvars(work_dir: Path) -> None:
+    """Generate terraform.tfvars for required variables without defaults.
+
+    Many Terraform modules require input variables (like 'name', 'environment')
+    that have no default values. Instead of failing, we detect these and create
+    a tfvars file with sensible stub values.
+    """
+    required_vars: dict[str, dict] = {}
+
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+
+        # Parse variable blocks: variable "name" { ... }
+        # We need to find variables without default values
+        var_blocks = re.findall(
+            r'variable\s+"([^"]+)"\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}',
+            content,
+            re.DOTALL,
+        )
+
+        for var_name, var_body in var_blocks:
+            # Check if variable has a default
+            has_default = re.search(r'\bdefault\s*=', var_body)
+            if not has_default:
+                # Extract type if available
+                type_match = re.search(r'\btype\s*=\s*(\w+)', var_body)
+                var_type = type_match.group(1) if type_match else "string"
+                required_vars[var_name] = {"type": var_type}
+
+    if not required_vars:
+        return
+
+    # Check if tfvars already exists
+    tfvars_file = work_dir / "terraform.tfvars"
+    existing_vars = set()
+    if tfvars_file.exists():
+        existing_content = tfvars_file.read_text()
+        # Find already defined variables
+        existing_vars = set(re.findall(r'^(\w+)\s*=', existing_content, re.MULTILINE))
+
+    # Generate stub values for missing required variables
+    new_vars = []
+    for var_name, var_info in required_vars.items():
+        if var_name in existing_vars:
+            continue
+
+        var_type = var_info.get("type", "string")
+
+        # Generate appropriate stub value based on variable name and type
+        if var_type in ("number", "int"):
+            value = "1"
+        elif var_type == "bool":
+            value = "false"
+        elif var_type in ("list", "set"):
+            value = "[]"
+        elif var_type in ("map", "object"):
+            value = "{}"
+        else:
+            # String type - use smart defaults based on common variable names
+            if var_name in ("name", "project_name", "app_name", "service_name"):
+                value = '"lsqm-test"'
+            elif var_name in ("environment", "env", "stage"):
+                value = '"test"'
+            elif var_name in ("region", "aws_region"):
+                value = '"us-east-1"'
+            elif "bucket" in var_name.lower():
+                value = '"lsqm-test-bucket"'
+            elif "domain" in var_name.lower():
+                value = '"example.com"'
+            elif "email" in var_name.lower():
+                value = '"test@example.com"'
+            elif "prefix" in var_name.lower():
+                value = '"lsqm"'
+            elif "suffix" in var_name.lower():
+                value = '"test"'
+            else:
+                value = f'"lsqm-{var_name}"'
+
+        new_vars.append(f'{var_name} = {value}')
+
+    if new_vars:
+        # Append to existing or create new tfvars
+        mode = "a" if tfvars_file.exists() else "w"
+        with open(tfvars_file, mode) as f:
+            if mode == "a":
+                f.write("\n# Auto-generated stub values for required variables\n")
+            else:
+                f.write("# Auto-generated stub values for required variables\n")
+            f.write("\n".join(new_vars) + "\n")
+
+
+# Services not available in LocalStack Community Edition
+LOCALSTACK_PRO_ONLY_SERVICES = {
+    "bedrock",
+    "bedrockagent",
+    "bedrockruntime",
+    "apigatewayv2",  # HTTP APIs require Pro
+    "appsync",
+    "athena",
+    "cognito-identity",
+    "cognito-idp",
+    "elasticache",
+    "emr",
+    "glue",
+    "iot",
+    "mediastore",
+    "mq",
+    "neptune",
+    "qldb",
+    "rds",
+    "redshift",
+    "transfer",
+    "xray",
+}
+
+
+def _remove_pro_only_resources(work_dir: Path) -> bool:
+    """Remove resources that require LocalStack Pro.
+
+    Some Terraform files reference services only available in LocalStack Pro.
+    For testing LocalStack Community Edition, we remove these resources to allow
+    the rest of the architecture to be tested.
+
+    Returns True if any resources were removed.
+    """
+    removed_any = False
+
+    # Resource type prefixes that indicate Pro-only services
+    pro_resource_patterns = [
+        r"aws_bedrockagent_",
+        r"aws_bedrock_",
+        r"aws_appsync_",
+        r"aws_athena_",
+        r"aws_cognito_",
+        r"aws_elasticache_",
+        r"aws_emr_",
+        r"aws_glue_",
+        r"aws_iot_",
+        r"aws_mediastore_",
+        r"aws_mq_",
+        r"aws_neptune_",
+        r"aws_qldb_",
+        r"aws_redshift_",
+        r"aws_transfer_",
+        r"aws_xray_",
+    ]
+
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+        original = content
+
+        for pattern in pro_resource_patterns:
+            # Remove resource blocks for Pro-only services
+            # Match: resource "aws_bedrock_xxx" "name" { ... }
+            content = re.sub(
+                rf'resource\s+"{pattern}[^"]*"\s+"[^"]+"\s*\{{[^{{}}]*(?:\{{[^{{}}]*\}}[^{{}}]*)*\}}',
+                "# Resource removed - requires LocalStack Pro",
+                content,
+                flags=re.DOTALL,
+            )
+            # Remove data blocks for Pro-only services
+            content = re.sub(
+                rf'data\s+"{pattern}[^"]*"\s+"[^"]+"\s*\{{[^{{}}]*(?:\{{[^{{}}]*\}}[^{{}}]*)*\}}',
+                "# Data source removed - requires LocalStack Pro",
+                content,
+                flags=re.DOTALL,
+            )
+
+        if content != original:
+            tf_file.write_text(content)
+            removed_any = True
+
+    return removed_any
+
+
+def _relax_module_version_constraints(work_dir: Path) -> None:
+    """Relax or remove strict module version constraints.
+
+    Some modules have version constraints that can't be resolved because
+    the exact version isn't available. We relax these to allow any version
+    that Terraform can find.
+    """
+    for tf_file in work_dir.glob("*.tf"):
+        content = tf_file.read_text()
+        original = content
+
+        # Pattern 1: Remove exact version constraints in module blocks
+        # version = "1.2.3" -> removed
+        content = re.sub(
+            r'(\s*)version\s*=\s*"[0-9]+\.[0-9]+\.[0-9]+"\s*\n',
+            r"\1# version constraint removed for compatibility\n",
+            content,
+        )
+
+        # Pattern 2: Relax version constraints with operators
+        # version = "~> 1.0" -> version = ">= 0.0.0"
+        # version = ">= 1.0, < 2.0" -> version = ">= 0.0.0"
+        content = re.sub(
+            r'version\s*=\s*"[~><=\s,0-9.]+"\s*\n',
+            '# version constraint relaxed for compatibility\n',
+            content,
+        )
+
+        if content != original:
+            tf_file.write_text(content)
+
+
 async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> TerraformApplyResult:
-    """Run tflocal init and apply."""
+    """Run terraform init and apply against LocalStack.
+
+    Instead of using tflocal (which can generate unsupported endpoints), we:
+    1. Pre-create our own LocalStack provider override file
+    2. Run terraform directly with proper AWS environment variables
+    """
     import os
-    from urllib.parse import urlparse
 
-    # Parse the endpoint to extract hostname and port
-    parsed = urlparse(endpoint)
-    hostname = parsed.hostname or "localhost"
-    port = str(parsed.port or 4566)
-
-    # Start with current environment and add our variables
-    # tflocal uses LOCALSTACK_HOSTNAME and EDGE_PORT (not LOCALSTACK_ENDPOINT)
+    # Set up AWS environment for LocalStack
     env = os.environ.copy()
     env.update(
         {
             "AWS_ACCESS_KEY_ID": "test",
             "AWS_SECRET_ACCESS_KEY": "test",
             "AWS_DEFAULT_REGION": "us-east-1",
-            "LOCALSTACK_HOSTNAME": hostname,
-            "EDGE_PORT": port,
-            "LOCALSTACK_ENDPOINT": endpoint,  # For backward compatibility
         }
     )
 
@@ -530,18 +876,26 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
     _normalize_provider_versions(work_dir)
     _remove_aws_profile_references(work_dir)
     _create_stub_lambda_sources(work_dir)
+    _generate_missing_tfvars(work_dir)
+    _remove_pro_only_resources(work_dir)
+    _relax_module_version_constraints(work_dir)
+
+    # Create our own LocalStack provider override (instead of using tflocal)
+    # This avoids tflocal generating unsupported endpoint configurations
+    _pre_create_localstack_override(work_dir, endpoint)
 
     try:
-        # tflocal init
+        # terraform init
         proc = await asyncio.create_subprocess_exec(
-            "tflocal",
+            "terraform",
             "init",
+            "-input=false",
             cwd=work_dir,
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
 
         if proc.returncode != 0:
             return TerraformApplyResult(
@@ -549,12 +903,9 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
                 logs=f"Init failed:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
             )
 
-        # Clean up unsupported endpoints from tflocal's generated override file
-        _cleanup_tflocal_overrides(work_dir)
-
-        # tflocal apply
+        # terraform apply
         proc = await asyncio.create_subprocess_exec(
-            "tflocal",
+            "terraform",
             "apply",
             "-auto-approve",
             "-input=false",
@@ -590,14 +941,8 @@ async def _run_terraform(work_dir: Path, endpoint: str, timeout: int) -> Terrafo
 
 
 async def _run_terraform_destroy(work_dir: Path, endpoint: str) -> None:
-    """Run tflocal destroy."""
+    """Run terraform destroy against LocalStack."""
     import os
-    from urllib.parse import urlparse
-
-    # Parse the endpoint to extract hostname and port
-    parsed = urlparse(endpoint)
-    hostname = parsed.hostname or "localhost"
-    port = str(parsed.port or 4566)
 
     env = os.environ.copy()
     env.update(
@@ -605,15 +950,12 @@ async def _run_terraform_destroy(work_dir: Path, endpoint: str) -> None:
             "AWS_ACCESS_KEY_ID": "test",
             "AWS_SECRET_ACCESS_KEY": "test",
             "AWS_DEFAULT_REGION": "us-east-1",
-            "LOCALSTACK_HOSTNAME": hostname,
-            "EDGE_PORT": port,
-            "LOCALSTACK_ENDPOINT": endpoint,
         }
     )
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            "tflocal",
+            "terraform",
             "destroy",
             "-auto-approve",
             "-input=false",
