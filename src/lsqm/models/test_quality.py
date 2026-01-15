@@ -234,7 +234,9 @@ class TestQualityAnalysis:
             tests_without_calls=data.get("tests_without_calls", 0),
             total_boto3_calls=data.get("total_boto3_calls", 0),
             unique_operations=data.get("unique_operations", []),
-            test_analyses=[TestFunctionAnalysis.from_dict(t) for t in data.get("test_analyses", [])],
+            test_analyses=[
+                TestFunctionAnalysis.from_dict(t) for t in data.get("test_analyses", [])
+            ],
             issues=[TestQualityIssue.from_dict(i) for i in data.get("issues", [])],
             coverage_comparison=CoverageComparison.from_dict(coverage_data),
             client_variables=data.get("client_variables", {}),

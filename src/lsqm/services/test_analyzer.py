@@ -707,7 +707,9 @@ def filter_tests_for_removed_services(
             if affected_services:
                 skipped_tests.append(node.name)
                 # Insert skip decorator before the function
-                skip_reason = f"Services removed during preprocessing: {', '.join(sorted(affected_services))}"
+                skip_reason = (
+                    f"Services removed during preprocessing: {', '.join(sorted(affected_services))}"
+                )
                 decorator = f'@pytest.mark.skip(reason="{skip_reason}")'
                 insertions.append((node.lineno - 1, decorator))
 

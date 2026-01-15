@@ -7,6 +7,7 @@ from lsqm.commands import (
     mine,
     notify,
     push,
+    qa,
     report,
     run,
     status,
@@ -26,4 +27,5 @@ __all__ = [
     "compare",
     "status",
     "clean",
+    "qa",
 ]

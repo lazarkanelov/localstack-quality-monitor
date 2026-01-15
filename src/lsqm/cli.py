@@ -85,6 +85,7 @@ from lsqm.commands import (  # noqa: E402
     mine,
     notify,
     push,
+    qa,
     report,
     run,
     status,
@@ -103,6 +104,7 @@ main.add_command(notify.notify)
 main.add_command(compare.compare)
 main.add_command(status.status)
 main.add_command(clean.clean)
+main.add_command(qa.qa_group)
 
 
 if __name__ == "__main__":
