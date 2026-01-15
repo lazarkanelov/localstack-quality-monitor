@@ -503,7 +503,7 @@ def _pre_create_localstack_override(work_dir: Path, endpoint: str) -> None:
         "efs",
         "eks",
         "elasticbeanstalk",
-        "elasticsearchservice",  # Not "elasticsearch"
+        # "elasticsearchservice",  # Removed - not fully supported in LocalStack Community
         "elb",
         "elbv2",
         "eventbridge",  # Not "events"
@@ -513,7 +513,7 @@ def _pre_create_localstack_override(work_dir: Path, endpoint: str) -> None:
         "kinesis",
         "kms",
         "lambda",
-        "opensearchservice",  # Not "opensearch"
+        # "opensearchservice",  # Removed - not fully supported in LocalStack Community
         "organizations",
         "rds",
         "resourcegroups",
@@ -627,6 +627,7 @@ def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
 
     for tf_file in work_dir.glob("*.tf"):
         content = tf_file.read_text()
+        original = content
 
         # Extract Lambda function names
         lambda_pattern = r'resource\s+"aws_lambda_function"\s+"([^"]+)"'
@@ -644,6 +645,77 @@ def _create_stub_lambda_sources(work_dir: Path) -> StubInfo:
         source_dirs = re.findall(
             r'source_dir\s*=\s*"(?:\$\{path\.module\}/)?([^"]+)"', content
         )
+
+        # Also handle variable-based source paths by providing defaults
+        # Pattern: source_file = var.source_path or source_dir = var.lambda_dir
+        var_source_files = re.findall(
+            r'source_file\s*=\s*var\.(\w+)', content
+        )
+        var_source_dirs = re.findall(
+            r'source_dir\s*=\s*var\.(\w+)', content
+        )
+
+        # For variable-based sources, create stub directories and update tfvars
+        for var_name in var_source_files:
+            stub_path = work_dir / "lambda_src" / "stub.js"
+            stub_path.parent.mkdir(parents=True, exist_ok=True)
+            if not stub_path.exists():
+                stub_path.write_text('exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n')
+                stub_info.files.append(str(stub_path.relative_to(work_dir)))
+                stub_info.stub_types[str(stub_path.relative_to(work_dir))] = "js"
+
+            # Add to tfvars if it exists
+            tfvars_file = work_dir / "terraform.tfvars"
+            if tfvars_file.exists():
+                tfvars_content = tfvars_file.read_text()
+                if f'{var_name}' not in tfvars_content:
+                    tfvars_content += f'\n{var_name} = "lambda_src/stub.js"\n'
+                    tfvars_file.write_text(tfvars_content)
+
+        for var_name in var_source_dirs:
+            stub_dir = work_dir / "lambda_src"
+            stub_dir.mkdir(parents=True, exist_ok=True)
+            stub_file = stub_dir / "index.js"
+            if not stub_file.exists():
+                stub_file.write_text('exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n')
+                stub_info.files.append(str(stub_file.relative_to(work_dir)))
+                stub_info.stub_types[str(stub_file.relative_to(work_dir))] = "js"
+                stub_info.directories.append("lambda_src")
+
+            # Add to tfvars if it exists
+            tfvars_file = work_dir / "terraform.tfvars"
+            if tfvars_file.exists():
+                tfvars_content = tfvars_file.read_text()
+                if f'{var_name}' not in tfvars_content:
+                    tfvars_content += f'\n{var_name} = "lambda_src"\n'
+                    tfvars_file.write_text(tfvars_content)
+
+        # Check for archive_file blocks without source_file or source_dir
+        # These need to have a source attribute added
+        archive_pattern = r'data\s+"archive_file"\s+"([^"]+)"\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}'
+        for match in re.finditer(archive_pattern, content, re.DOTALL):
+            archive_name = match.group(1)
+            archive_body = match.group(2)
+
+            # Check if this archive has any source configuration
+            has_source = any(kw in archive_body for kw in ['source_file', 'source_dir', 'source '])
+            if not has_source:
+                # Create a stub source file for this archive
+                stub_path = work_dir / f"lambda_stubs/{archive_name}.js"
+                stub_path.parent.mkdir(parents=True, exist_ok=True)
+                if not stub_path.exists():
+                    stub_path.write_text('exports.handler = async (event) => { return { statusCode: 200, body: "stub" }; };\n')
+                    stub_info.files.append(str(stub_path.relative_to(work_dir)))
+                    stub_info.stub_types[str(stub_path.relative_to(work_dir))] = "js"
+
+                # Add source_file to the archive block
+                old_block = match.group(0)
+                new_body = archive_body.rstrip() + f'\n  source_file = "${{path.module}}/lambda_stubs/{archive_name}.js"'
+                new_block = f'data "archive_file" "{archive_name}" {{{new_body}\n}}'
+                content = content.replace(old_block, new_block)
+
+        if content != original:
+            tf_file.write_text(content)
 
         # Create stub files
         for src_file in source_files:
@@ -1182,20 +1254,42 @@ def _remove_null_label_dependencies(work_dir: Path) -> None:
     is typically passed from a parent module. For standalone testing, we
     provide a minimal context or remove the dependency.
     """
+    import re
+
+    # First, check all files for null-label patterns
+    needs_context = False
+    all_content = ""
     for tf_file in work_dir.glob("*.tf"):
         content = tf_file.read_text()
-        original = content
+        all_content += content + "\n"
 
-        # Check if this uses the null-label pattern
-        if "cloudposse/label/null" in content or "context = " in content:
-            # Add a default context variable if not present
-            if 'variable "context"' not in content:
-                # Check if there's a variables.tf file
-                vars_file = work_dir / "variables.tf"
-                if vars_file.exists():
-                    vars_content = vars_file.read_text()
-                    if 'variable "context"' not in vars_content:
-                        vars_content += '''
+    # Check for various null-label patterns
+    null_label_patterns = [
+        "cloudposse/label/null",  # Direct module reference
+        "context = ",             # Context being passed
+        r"\bvar\.context\b",      # Context variable reference
+        r"\bmodule\.this\b",      # Common null-label output
+        r"\blocal\.context\b",    # Local context reference
+    ]
+
+    for pattern in null_label_patterns:
+        if re.search(pattern, all_content):
+            needs_context = True
+            break
+
+    if needs_context:
+        # Check if context variable already exists
+        has_context_var = 'variable "context"' in all_content
+
+        if not has_context_var:
+            # Add context variable to variables.tf (create if needed)
+            vars_file = work_dir / "variables.tf"
+            if vars_file.exists():
+                vars_content = vars_file.read_text()
+            else:
+                vars_content = ""
+
+            vars_content += '''
 
 # Auto-generated context variable for null-label compatibility
 variable "context" {
@@ -1219,10 +1313,7 @@ variable "context" {
   description = "Single object for setting entire context at once"
 }
 '''
-                        vars_file.write_text(vars_content)
-
-        if content != original:
-            tf_file.write_text(content)
+            vars_file.write_text(vars_content)
 
 
 def _preprocess_terraform(work_dir: Path, original_services: set[str]) -> PreprocessingDelta:
